@@ -1,4 +1,3 @@
-import React from 'react';
 import { Input } from 'antd';
 
 const FormInput = ({ label, error, type = "text", ...props }) => {

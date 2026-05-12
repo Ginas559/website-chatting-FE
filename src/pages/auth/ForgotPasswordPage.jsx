@@ -1,38 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Alert } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import FormInput from "../../components/common/FormInput";
 import SubmitButton from "../../components/common/SubmitButton";
+import AuthShell from "../../components/common/AuthShell";
+import StatusAlert from "../../components/common/StatusAlert";
 import {
-  clearForgotPasswordMessage,
+  clearForgotPasswordFeedback,
   resetForgotPasswordState,
   resetPassword,
   sendForgotPasswordOtp,
-} from "../../store/slices/forgotPasswordSlice";
-
-// ==========================================
-// FORGOT PASSWORD PAGE (Pham Phuc Tien - 23110339)
-// ==========================================
+} from "../../redux/slices/authSlice";
 
 const ForgotPasswordPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, message, isOtpSent } = useSelector(
-    (state) => state.forgotPassword
+  const { forgotPasswordLoading, forgotPasswordError, forgotPasswordMessage, isForgotPasswordOtpSent } = useSelector(
+    (state) => state.auth
   );
 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  useEffect(() => {
+    dispatch(clearForgotPasswordFeedback());
+
+    return () => {
+      dispatch(resetForgotPasswordState());
+    };
+  }, [dispatch]);
+
   const handleSendOtp = async () => {
-    dispatch(clearForgotPasswordMessage());
+    dispatch(clearForgotPasswordFeedback());
     await dispatch(sendForgotPasswordOtp(email));
   };
 
   const handleResetPassword = async () => {
-    dispatch(clearForgotPasswordMessage());
+    dispatch(clearForgotPasswordFeedback());
 
     const result = await dispatch(resetPassword({ otp, newPassword }));
     if (resetPassword.fulfilled.match(result)) {
@@ -44,34 +49,20 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4 transition-all duration-500">
-      <div
-        className={`w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-gray-100 transition-opacity duration-500 ${
-          loading ? "opacity-70" : "opacity-100"
-        }`}
-      >
-        <Link
-          to="/"
-          className="mb-4 inline-flex text-sm font-medium text-gray-500 hover:text-blue-600 hover:underline"
-        >
-          ← Trang chủ
-        </Link>
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Quên mật khẩu
-          </h1>
-          <p className="text-gray-500 mt-2 font-medium">
-            {isOtpSent ? "Nhập OTP và mật khẩu mới" : "Nhập email để nhận mã OTP"}
-          </p>
-        </header>
+    <AuthShell
+      title="Quên mật khẩu"
+      subtitle={isForgotPasswordOtpSent ? "Nhập OTP và mật khẩu mới" : "Nhập email để nhận mã OTP"}
+      icon={(
+        <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 1a7 7 0 00-7 7v3H4a2 2 0 00-2 2v8a2 2 0 002 2h16a2 2 0 002-2v-8a2 2 0 00-2-2h-1V8a7 7 0 00-7-7zm-5 10V8a5 5 0 1110 0v3H7zm5 4a2 2 0 110 4 2 2 0 010-4z" />
+        </svg>
+      )}
+    >
+      {forgotPasswordError && <StatusAlert>{forgotPasswordError}</StatusAlert>}
+      {forgotPasswordMessage && <StatusAlert type="success">{forgotPasswordMessage}</StatusAlert>}
 
-        <div className="space-y-4">
-          {error && <Alert message={error} type="error" showIcon className="rounded-lg" />}
-          {message && (
-            <Alert message={message} type="success" showIcon className="rounded-lg" />
-          )}
-
-          {!isOtpSent ? (
+      <div className="space-y-4">
+        {!isForgotPasswordOtpSent ? (
             <>
               <FormInput
                 label="Email"
@@ -80,11 +71,11 @@ const ForgotPasswordPage = () => {
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  dispatch(clearForgotPasswordMessage());
+                  dispatch(clearForgotPasswordFeedback());
                 }}
                 placeholder="name@example.com"
               />
-              <SubmitButton loading={loading} onClick={handleSendOtp}>
+              <SubmitButton loading={forgotPasswordLoading} onClick={handleSendOtp}>
                 Gửi mã OTP
               </SubmitButton>
             </>
@@ -96,7 +87,7 @@ const ForgotPasswordPage = () => {
                 value={otp}
                 onChange={(e) => {
                   setOtp(e.target.value);
-                  dispatch(clearForgotPasswordMessage());
+                  dispatch(clearForgotPasswordFeedback());
                 }}
                 placeholder="6 chữ số"
                 maxLength={6}
@@ -108,25 +99,24 @@ const ForgotPasswordPage = () => {
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
-                  dispatch(clearForgotPasswordMessage());
+                  dispatch(clearForgotPasswordFeedback());
                 }}
                 placeholder="Tối thiểu 6 ký tự"
               />
-              <SubmitButton loading={loading} onClick={handleResetPassword}>
+              <SubmitButton loading={forgotPasswordLoading} onClick={handleResetPassword}>
                 Đổi mật khẩu
               </SubmitButton>
             </>
           )}
-        </div>
-
-        <Link
-          to="/login"
-          className="block mt-6 text-center text-gray-500 text-sm font-medium hover:text-blue-600 hover:underline"
-        >
-          Quay lại đăng nhập
-        </Link>
       </div>
-    </div>
+
+      <Link
+        to="/login"
+        className="block mt-6 text-center text-gray-500 text-sm font-medium hover:text-blue-600 hover:underline"
+      >
+        Quay lại đăng nhập
+      </Link>
+    </AuthShell>
   );
 };
 

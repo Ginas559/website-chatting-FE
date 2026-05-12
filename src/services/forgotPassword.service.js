@@ -1,9 +1,5 @@
 import axios from "../util/axios.customize";
 
-// ==========================================
-// FORGOT PASSWORD SERVICE (Pham Phuc Tien - 23110339)
-// ==========================================
-
 const forgotPasswordService = {
   sendOtp: (email) => {
     return axios.post("forgot-password", { email });

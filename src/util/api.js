@@ -1,14 +1,5 @@
 import axios from './axios.customize';
 
-/**
- * API Functions - gọi API backend BT02
- * Sử dụng Axios instance đã customize
- */
-
-// ==========================================
-// LOGIN APIs (Vũ Minh Khang - 23110238)
-// ==========================================
-
 export const loginApi = (email, password) => {
     return axios.post('login', { email, password });
 };
@@ -27,4 +18,8 @@ export const getUserProfileApi = () => {
 
 export const getAdminProfileApi = () => {
     return axios.get('/admin/profile', { baseURL: '' });
+};
+
+export const getModeratorProfileApi = () => {
+    return axios.get('/moderator/profile', { baseURL: '' });
 };

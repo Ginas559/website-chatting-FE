@@ -1,115 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Alert } from 'antd';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import FormInput from '../../components/common/FormInput';
 import SubmitButton from '../../components/common/SubmitButton';
-import authService from '../../services/auth.service';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from '../../store/slices/userSlice';
+import AuthShell from '../../components/common/AuthShell';
+import StatusAlert from '../../components/common/StatusAlert';
+import {
+    clearError,
+    clearRegisterFeedback,
+    registerUser,
+    resetRegistrationState,
+    verifyOtp,
+} from '../../redux/slices/authSlice';
 
 const RegisterPage = () => {
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [countdown, setCountdown] = useState(300); 
-    const [rateLimitError, setRateLimitError] = useState(null);
-    const [formData, setFormData] = useState({
-        email: '', password: '', firstName: '', lastName: '', otpCode: ''
-    });
-    const [errors, setErrors] = useState({});
-    
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const { registerLoading, registerError, registerMessage, isOtpSent, user } = useSelector((state) => state.auth);
+
+    const [countdown, setCountdown] = useState(300);
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        otpCode: '',
+    });
+    const [errors, setErrors] = useState({});
+
+    useEffect(() => {
+        dispatch(clearError());
+        dispatch(clearRegisterFeedback());
+
+        return () => {
+            dispatch(resetRegistrationState());
+        };
+    }, [dispatch]);
 
     useEffect(() => {
         let timer;
-        if (step === 2 && countdown > 0) {
-            timer = setInterval(() => setCountdown(prev => prev - 1), 1000);
+
+        if (isOtpSent && countdown > 0) {
+            timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
         }
+
         return () => clearInterval(timer);
-    }, [step, countdown]);
+    }, [isOtpSent, countdown]);
+
     useEffect(() => {
-        if (step === 2) {
+        if (isOtpSent) {
             const otpInput = document.getElementsByName('otpCode')[0];
             if (otpInput) otpInput.focus();
         }
-    }, [step]);
+    }, [isOtpSent]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-        if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' });
+
+        if (errors[e.target.name]) {
+            setErrors({ ...errors, [e.target.name]: '' });
+        }
     };
 
     const handleRegister = async () => {
-        setLoading(true);
         setErrors({});
-        setRateLimitError(null);
-        try {
-            const res = await authService.register({
+        dispatch(clearRegisterFeedback());
+
+        const result = await dispatch(
+            registerUser({
                 email: formData.email,
                 password: formData.password,
                 firstName: formData.firstName,
-                lastName: formData.lastName
+                lastName: formData.lastName,
+            })
+        );
+
+        if (registerUser.fulfilled.match(result)) {
+            setCountdown(300);
+            return;
+        }
+
+        if (result.payload?.errors) {
+            const serverErrors = {};
+            result.payload.errors.forEach((item) => {
+                serverErrors[item.path] = item.msg;
             });
-            localStorage.setItem('tempToken', res.tempToken);
-            localStorage.setItem('registerEmail', formData.email);
-            setStep(2);
-            setCountdown(300); 
-        } catch (err) {
-            if (err.status === 429) {
-                setRateLimitError("Bạn đã thử quá 5 lần, vui lòng quay lại sau 1 giờ"); 
-            } else if (err.errors) {
-                const serverErrors = {};
-                err.errors.forEach(e => serverErrors[e.path] = e.msg);
-                setErrors(serverErrors);
-            } else {
-                setErrors({ global: err.error || "Có lỗi xảy ra" });
-            }
-        } finally { setLoading(false); }
+            setErrors(serverErrors);
+            return;
+        }
+
+        setErrors({ global: result.payload?.error || 'Có lỗi xảy ra' });
     };
 
     const handleVerifyOTP = async () => {
-        setLoading(true);
-        try {
-            const tempToken = localStorage.getItem('tempToken');
-            const email = localStorage.getItem('registerEmail');
-            const res = await authService.verifyOTP({ email, otp: formData.otpCode, tempToken });
-            
-            dispatch(loginSuccess({
-                user: res.user,
-                token: res.accessToken
-            }));
+        setErrors({});
+        dispatch(clearRegisterFeedback());
 
-            localStorage.setItem('accessToken', res.accessToken); 
-            localStorage.removeItem('tempToken');
-            localStorage.removeItem('registerEmail');
-            
-            navigate('/login'); 
-        } catch (err) {
-            setErrors({ otpCode: err.error || "Mã OTP không hợp lệ" });
-            if (err.error?.includes("Token không hợp lệ")) { 
-                localStorage.removeItem('tempToken');
-                setStep(1);
-            }
-        } finally { setLoading(false); }
+        const result = await dispatch(verifyOtp({ otp: formData.otpCode }));
+
+        if (verifyOtp.fulfilled.match(result)) {
+            const roleId = result.payload?.user?.roleId || user?.roleId;
+            navigate(roleId === 'R1' ? '/admin/profile' : '/user/profile');
+            return;
+        }
+
+        if (result.payload?.errors) {
+            const serverErrors = {};
+            result.payload.errors.forEach((item) => {
+                serverErrors[item.path] = item.msg;
+            });
+            setErrors(serverErrors);
+            return;
+        }
+
+        setErrors({ otpCode: result.payload?.error || 'Mã OTP không hợp lệ' });
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4 transition-all duration-500">
-            <div className={`w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-gray-100 transition-opacity duration-500 ${loading ? 'opacity-70' : 'opacity-100'}`}>
-                <Link to="/" className="mb-4 inline-flex text-sm font-medium text-gray-500 hover:text-blue-600 hover:underline">
-                    ← Trang chủ
-                </Link>
-                <header className="mb-8 text-center">
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Realtime Chat</h1>
-                    <p className="text-gray-500 mt-2 font-medium">
-                        {step === 1 ? "Bắt đầu hành trình" : "Xác thực OTP"}
-                    </p>
-                </header>
+        <AuthShell
+            title="Realtime Chat"
+            subtitle={isOtpSent ? 'Xác thực OTP' : 'Bắt đầu hành trình'}
+            icon={(
+                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm1.07-7.75l-.9.92A2 2 0 0012 12h-1v-1a4 4 0 011.17-2.83l1.24-1.25a1.75 1.75 0 10-2.91-1.27H8.5a3.5 3.5 0 116.57 1.6z" />
+                </svg>
+            )}
+        >
+            {registerError && <StatusAlert>{registerError}</StatusAlert>}
+            {registerMessage && <StatusAlert type="success">{registerMessage}</StatusAlert>}
+            {errors.global && <StatusAlert>{errors.global}</StatusAlert>}
 
-                {rateLimitError && <Alert message={rateLimitError} type="error" showIcon className="mb-6 rounded-lg" />}
-
-                <div className="space-y-4">
-                    {step === 1 ? (
+            <div className="space-y-4">
+                    {!isOtpSent ? (
                         <>
                             <div className="grid grid-cols-2 gap-4">
                                 <FormInput label="Họ & đệm" name="firstName" value={formData.firstName} onChange={handleChange} error={errors.firstName} />
@@ -117,7 +139,7 @@ const RegisterPage = () => {
                             </div>
                             <FormInput label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} />
                             <FormInput label="Mật khẩu" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
-                            <SubmitButton loading={loading} onClick={handleRegister}>Tiếp theo</SubmitButton>
+                            <SubmitButton loading={registerLoading} onClick={handleRegister}>Tiếp theo</SubmitButton>
                         </>
                     ) : (
                         <>
@@ -128,12 +150,11 @@ const RegisterPage = () => {
                                 <p className="text-xs text-blue-500 mt-1">Mã OTP hết hạn sau 5 phút</p>
                             </div>
                             <FormInput label="Nhập mã OTP" name="otpCode" value={formData.otpCode} onChange={handleChange} error={errors.otpCode} />
-                            <SubmitButton loading={loading} onClick={handleVerifyOTP} className="bg-green-600 hover:bg-green-700">Hoàn tất</SubmitButton>
+                            <SubmitButton loading={registerLoading} onClick={handleVerifyOTP} className="bg-green-600 hover:bg-green-700">Hoàn tất</SubmitButton>
                         </>
                     )}
-                </div>
             </div>
-        </div>
+        </AuthShell>
     );
 };
 
