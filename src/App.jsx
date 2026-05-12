@@ -1,22 +1,21 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import LoginPage from './pages/LoginPage';
-import UserProfilePage from './pages/UserProfilePage';
-import AdminProfilePage from './pages/AdminProfilePage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import RegisterPage from './pages/auth/RegisterPage';
 
 function App() {
-    const { isAuthenticated } = useSelector((state) => state.auth);
-
-    return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/user/profile" element={isAuthenticated ? <UserProfilePage /> : <Navigate to="/login" />} />
-                <Route path="/admin/profile" element={isAuthenticated ? <AdminProfilePage /> : <Navigate to="/login" />} />
-                <Route path="*" element={<Navigate to="/login" />} />
-            </Routes>
-        </BrowserRouter>
-    );
+  return (
+    <Router>
+      <Routes>
+        {/* Đường dẫn mặc định sẽ tự chuyển hướng sang trang đăng ký */}
+        <Route path="/" element={<Navigate to="/register" />} />
+        
+        {/* Định nghĩa đường dẫn cho trang Register */}
+        <Route path="/register" element={<RegisterPage />} />
+        
+        {/* Bạn có thể thêm trang Login sau này tại đây */}
+        <Route path="/login" element={<div>Trang Login (Sẽ làm ở bước sau)</div>} />
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;
