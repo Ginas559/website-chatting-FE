@@ -19,3 +19,7 @@ export const getUserProfileApi = () => {
 export const getAdminProfileApi = () => {
     return axios.get('/admin/profile', { baseURL: '' });
 };
+
+export const getModeratorProfileApi = () => {
+    return axios.get('/moderator/profile', { baseURL: '' });
+};

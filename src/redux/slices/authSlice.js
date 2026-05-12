@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getAdminProfileApi, getUserProfileApi, loginApi, logoutApi, refreshTokenApi } from '../../util/api';
+import { getAdminProfileApi, getModeratorProfileApi, getUserProfileApi, loginApi, logoutApi, refreshTokenApi } from '../../util/api';
 import authService from '../../services/auth.service';
 import forgotPasswordService from '../../services/forgotPassword.service';
 
@@ -150,6 +150,18 @@ export const fetchAdminProfile = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {
             const res = await getAdminProfileApi();
+            return res;
+        } catch (error) {
+            return rejectWithValue(error?.response?.data || error?.data || error);
+        }
+    }
+);
+
+export const fetchModeratorProfile = createAsyncThunk(
+    'auth/fetchModeratorProfile',
+    async (_, { rejectWithValue }) => {
+        try {
+            const res = await getModeratorProfileApi();
             return res;
         } catch (error) {
             return rejectWithValue(error?.response?.data || error?.data || error);

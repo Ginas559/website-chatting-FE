@@ -28,8 +28,12 @@ const LoginPage = () => {
         if (loginUser.fulfilled.match(result)) {
             setSuccessMsg('Đăng nhập thành công! Đang chuyển hướng...');
             setTimeout(() => {
-                if ((result.payload?.user || user)?.roleId === 'R1') {
-                    navigate('/admin/profile');
+                const roleId = (result.payload?.user || user)?.roleId;
+
+                if (roleId === 'R1') {
+                    navigate('/management/users');
+                } else if (roleId === 'R3') {
+                    navigate('/moderator/users');
                 } else {
                     navigate('/user/profile');
                 }
