@@ -5,6 +5,7 @@ import { logoutUser } from '../redux/slices/authSlice';
 import { clearProfileFeedback, fetchProfile, resetProfileState, saveProfile } from '../redux/slices/profileSlice';
 import ProfileInput from '../components/profile/ProfileInput';
 import ProfileForm from '../components/profile/ProfileForm';
+import ProfileSummaryCard from '../components/profile/ProfileSummaryCard';
 
 const mapProfileToForm = (profile = {}) => ({
     firstName: '',
@@ -17,6 +18,18 @@ const mapProfileToForm = (profile = {}) => ({
     avatar: '',
     ...profile,
 });
+
+const buildProfilePayload = (values) => {
+    return Object.entries(values).reduce((payload, [key, value]) => {
+        const normalizedValue = typeof value === 'string' ? value.trim() : value;
+
+        if (normalizedValue !== '' && normalizedValue !== null && normalizedValue !== undefined) {
+            payload[key] = normalizedValue;
+        }
+
+        return payload;
+    }, {});
+};
 
 const decodeJwtPayload = (token) => {
     if (!token) return {};
@@ -42,12 +55,23 @@ const ProfileEditor = ({
     error,
     successMessage,
     userEmail,
+    onLogout,
 }) => {
     const dispatch = useDispatch();
     const [form, setForm] = useState(() => mapProfileToForm(profileData));
     const [localError, setLocalError] = useState('');
 
-    const avatarFallback = (form.firstName || profileData.firstName || 'U').slice(0, 1).toUpperCase();
+    const completion = useMemo(() => {
+        const fields = ['firstName', 'lastName', 'phone', 'address', 'city', 'country', 'bio', 'avatar'];
+        const filledCount = fields.reduce((count, field) => {
+            const value = form[field];
+            const hasValue = typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+
+            return count + (hasValue ? 1 : 0);
+        }, 0);
+
+        return Math.round((filledCount / fields.length) * 100);
+    }, [form]);
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -65,10 +89,17 @@ const ProfileEditor = ({
             return;
         }
 
+        const payload = buildProfilePayload(form);
+
+        if (Object.keys(payload).length === 0) {
+            setLocalError('Hãy nhập ít nhất một field hợp lệ trước khi lưu profile.');
+            return;
+        }
+
         setLocalError('');
 
         try {
-            await dispatch(saveProfile({ userId, values: form, method: 'patch' })).unwrap();
+            await dispatch(saveProfile({ userId, values: payload, method: 'patch' })).unwrap();
         } catch (submitError) {
             setLocalError(
                 typeof submitError === 'string'
@@ -80,42 +111,20 @@ const ProfileEditor = ({
 
     return (
         <>
-            <aside className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
-                <div className="flex flex-col items-center text-center">
-                    <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-indigo-100 bg-slate-100 shadow-lg">
-                        {form.avatar ? (
-                            <img src={form.avatar} alt="Avatar" className="h-full w-full object-cover" />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center text-4xl font-black text-slate-400">
-                                {avatarFallback}
-                            </div>
-                        )}
-                    </div>
-
-                    <h2 className="mt-4 text-2xl font-black text-slate-900">
-                        {(form.firstName || profileData.firstName || 'User').trim()} {(form.lastName || profileData.lastName || '').trim()}
-                    </h2>
-
-                    <p className="mt-1 text-sm text-slate-500">{profileData.email || userEmail || 'Chưa có email'}</p>
-
-                    <div className="mt-6 w-full rounded-2xl bg-slate-50 p-4 text-left">
-                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">Trạng thái</p>
-                        <p className="mt-2 text-sm text-slate-700">
-                            {loading ? 'Đang tải profile...' : saving ? 'Đang lưu dữ liệu...' : 'Sẵn sàng chỉnh sửa'}
-                        </p>
-                    </div>
-
-                    {(successMessage || localError || error) ? (
-                        <div className={`mt-4 w-full rounded-2xl px-4 py-3 text-left text-sm ${successMessage ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                            {successMessage || localError || error}
-                        </div>
-                    ) : null}
-                </div>
-            </aside>
+            <ProfileSummaryCard
+                profileData={profileData}
+                loading={loading}
+                saving={saving}
+                error={error || localError}
+                successMessage={successMessage}
+                userEmail={userEmail}
+                userName={`${form.firstName || profileData.firstName || 'User'} ${form.lastName || profileData.lastName || ''}`.trim()}
+                onLogout={onLogout}
+            />
 
             <ProfileForm
                 title="Thông tin profile"
-                description="Các field bên dưới khớp đúng backend bài 02, có thể cập nhật ngay bằng PATCH."
+                description="PATCH sẽ bỏ qua field rỗng, tránh lỗi validation và chỉ cập nhật các thông tin bạn đã nhập."
                 onSubmit={handleSubmit}
                 footer={(
                     <button
@@ -127,6 +136,10 @@ const ProfileEditor = ({
                     </button>
                 )}
             >
+                <div className="mb-6 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-left text-sm text-sky-700">
+                    {completion}% hồ sơ đã được điền. Nên cập nhật avatar, bio và địa chỉ để phần profile nhìn hoàn chỉnh hơn.
+                </div>
+
                 <div className="grid gap-5 md:grid-cols-2">
                     <ProfileInput label="First name" name="firstName" value={form.firstName} onChange={handleChange} placeholder="John" />
                     <ProfileInput label="Last name" name="lastName" value={form.lastName} onChange={handleChange} placeholder="Doe" />
@@ -213,6 +226,7 @@ const UserProfilePage = () => {
                         error={error}
                         successMessage={successMessage}
                         userEmail={user?.email}
+                        onLogout={handleLogout}
                     />
                 </div>
             </div>

@@ -118,8 +118,8 @@ const RegisterPage = () => {
 
     return (
         <AuthShell
-            title="Realtime Chat"
-            subtitle={isOtpSent ? 'Xác thực OTP' : 'Bắt đầu hành trình'}
+            title="Đăng ký tài khoản"
+            subtitle={isOtpSent ? 'Xác thực OTP để hoàn tất' : 'Tạo tài khoản mới trong vài bước'}
             icon={(
                 <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm1.07-7.75l-.9.92A2 2 0 0012 12h-1v-1a4 4 0 011.17-2.83l1.24-1.25a1.75 1.75 0 10-2.91-1.27H8.5a3.5 3.5 0 116.57 1.6z" />
@@ -130,29 +130,38 @@ const RegisterPage = () => {
             {registerMessage && <StatusAlert type="success">{registerMessage}</StatusAlert>}
             {errors.global && <StatusAlert>{errors.global}</StatusAlert>}
 
-            <div className="space-y-4">
-                    {!isOtpSent ? (
-                        <>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormInput label="Họ & đệm" name="firstName" value={formData.firstName} onChange={handleChange} error={errors.firstName} />
-                                <FormInput label="Tên" name="lastName" value={formData.lastName} onChange={handleChange} error={errors.lastName} />
+            <div className="space-y-5">
+                {!isOtpSent ? (
+                    <>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <FormInput label="Họ & đệm" name="firstName" value={formData.firstName} onChange={handleChange} error={errors.firstName} placeholder="Nguyễn Văn" />
+                            <FormInput label="Tên" name="lastName" value={formData.lastName} onChange={handleChange} error={errors.lastName} placeholder="An" />
+                        </div>
+
+                        <FormInput label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} placeholder="name@example.com" />
+                        <FormInput label="Mật khẩu" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} placeholder="Tối thiểu 6 ký tự" />
+
+                        <SubmitButton loading={registerLoading} onClick={handleRegister}>
+                            Tiếp theo
+                        </SubmitButton>
+                    </>
+                ) : (
+                    <>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-center shadow-sm">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Thời gian OTP</p>
+                            <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
+                                {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
                             </div>
-                            <FormInput label="Email" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} />
-                            <FormInput label="Mật khẩu" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
-                            <SubmitButton loading={registerLoading} onClick={handleRegister}>Tiếp theo</SubmitButton>
-                        </>
-                    ) : (
-                        <>
-                            <div className="text-center p-4 bg-blue-50 rounded-lg mb-4">
-                                <div className="text-2xl font-mono font-bold text-blue-600">
-                                    {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
-                                </div>
-                                <p className="text-xs text-blue-500 mt-1">Mã OTP hết hạn sau 5 phút</p>
-                            </div>
-                            <FormInput label="Nhập mã OTP" name="otpCode" value={formData.otpCode} onChange={handleChange} error={errors.otpCode} />
-                            <SubmitButton loading={registerLoading} onClick={handleVerifyOTP} className="bg-green-600 hover:bg-green-700">Hoàn tất</SubmitButton>
-                        </>
-                    )}
+                            <p className="mt-2 text-sm text-slate-500">Mã OTP hết hạn sau 5 phút</p>
+                        </div>
+
+                        <FormInput label="Nhập mã OTP" name="otpCode" value={formData.otpCode} onChange={handleChange} error={errors.otpCode} placeholder="6 chữ số" />
+
+                        <SubmitButton loading={registerLoading} onClick={handleVerifyOTP} className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !shadow-emerald-200">
+                            Hoàn tất
+                        </SubmitButton>
+                    </>
+                )}
             </div>
         </AuthShell>
     );

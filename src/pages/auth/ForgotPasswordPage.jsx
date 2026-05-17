@@ -51,7 +51,7 @@ const ForgotPasswordPage = () => {
   return (
     <AuthShell
       title="Quên mật khẩu"
-      subtitle={isForgotPasswordOtpSent ? "Nhập OTP và mật khẩu mới" : "Nhập email để nhận mã OTP"}
+      subtitle={isForgotPasswordOtpSent ? "Xác thực OTP và đặt mật khẩu mới" : "Nhập email để nhận mã OTP"}
       icon={(
         <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 1a7 7 0 00-7 7v3H4a2 2 0 00-2 2v8a2 2 0 002 2h16a2 2 0 002-2v-8a2 2 0 00-2-2h-1V8a7 7 0 00-7-7zm-5 10V8a5 5 0 1110 0v3H7zm5 4a2 2 0 110 4 2 2 0 010-4z" />
@@ -61,7 +61,7 @@ const ForgotPasswordPage = () => {
       {forgotPasswordError && <StatusAlert>{forgotPasswordError}</StatusAlert>}
       {forgotPasswordMessage && <StatusAlert type="success">{forgotPasswordMessage}</StatusAlert>}
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {!isForgotPasswordOtpSent ? (
             <>
               <FormInput
@@ -81,6 +81,11 @@ const ForgotPasswordPage = () => {
             </>
           ) : (
             <>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Bước 2</p>
+                <p className="mt-2 text-sm text-slate-600">Nhập OTP và mật khẩu mới để hoàn tất việc đặt lại mật khẩu.</p>
+              </div>
+
               <FormInput
                 label="OTP"
                 name="otp"
@@ -103,7 +108,7 @@ const ForgotPasswordPage = () => {
                 }}
                 placeholder="Tối thiểu 6 ký tự"
               />
-              <SubmitButton loading={forgotPasswordLoading} onClick={handleResetPassword}>
+              <SubmitButton loading={forgotPasswordLoading} onClick={handleResetPassword} className="!bg-gradient-to-r !from-rose-500 !to-red-500 !shadow-rose-200">
                 Đổi mật khẩu
               </SubmitButton>
             </>
@@ -112,7 +117,7 @@ const ForgotPasswordPage = () => {
 
       <Link
         to="/login"
-        className="block mt-6 text-center text-gray-500 text-sm font-medium hover:text-blue-600 hover:underline"
+        className="mt-6 block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
       >
         Quay lại đăng nhập
       </Link>
