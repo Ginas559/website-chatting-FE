@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser, clearError } from '../redux/slices/authSlice';
 import AuthShell from '../components/common/AuthShell';
+import FormInput from '../components/common/FormInput';
+import SubmitButton from '../components/common/SubmitButton';
 import StatusAlert from '../components/common/StatusAlert';
 const LoginPage = () => {
     const dispatch = useDispatch();
@@ -52,15 +54,15 @@ const LoginPage = () => {
             )}
             footer={(
                 <>
-                    <div className="flex items-center my-7">
-                        <div className="flex-1 h-px bg-slate-200" />
-                        <span className="text-slate-400 text-[11px] font-semibold px-3 uppercase tracking-wider">hoặc</span>
-                        <div className="flex-1 h-px bg-slate-200" />
+                    <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-slate-200" />
+                        <span className="px-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Hoặc</span>
+                        <div className="h-px flex-1 bg-slate-200" />
                     </div>
 
                     <Link
                         to="/register"
-                        className="block w-full py-3 text-center border border-slate-300 rounded-xl bg-white text-slate-600 text-sm font-semibold transition-all hover:border-indigo-500 hover:text-indigo-500 hover:bg-slate-50"
+                        className="mt-4 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-center text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                     >
                         Tạo tài khoản mới
                     </Link>
@@ -70,79 +72,62 @@ const LoginPage = () => {
             {error && <StatusAlert>{error}</StatusAlert>}
             {successMsg && <StatusAlert type="success">{successMsg}</StatusAlert>}
 
-            <form onSubmit={handleSubmit} autoComplete="on">
-                        {/* Email */}
-                        <div className="mb-5">
-                            <label htmlFor="login-email" className="text-slate-600 text-[13px] font-semibold mb-2 block">Email</label>
-                            <div className="relative">
-                                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                                </svg>
-                                <input
-                                    type="email"
-                                    id="login-email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="name@example.com"
-                                    required
-                                    autoComplete="email"
-                                    className="w-full py-3.5 pl-11 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-                                />
-                            </div>
-                        </div>
+            <form onSubmit={handleSubmit} autoComplete="on" className="space-y-5">
+                <FormInput
+                    label="Email"
+                    name="login-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    required
+                    autoComplete="email"
+                    leftElement={(
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                        </svg>
+                    )}
+                />
 
-                        {/* Password */}
-                        <div className="mb-5">
-                            <label htmlFor="login-password" className="text-slate-600 text-[13px] font-semibold mb-2 block">Mật khẩu</label>
-                            <div className="relative">
-                                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                                </svg>
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    id="login-password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    required
-                                    autoComplete="current-password"
-                                    className="w-full py-3.5 pl-11 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer"
-                                >
-                                    {showPassword ? (
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" /><path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" /></svg>
-                                    ) : (
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Forgot password */}
-                        <div className="text-right mb-5">
-                            <Link to="/forgot-password" className="text-slate-500 text-[13px] font-medium hover:text-indigo-500 hover:underline transition-colors">
-                                Quên mật khẩu?
-                            </Link>
-                        </div>
-
-                        {/* Submit */}
+                <FormInput
+                    label="Mật khẩu"
+                    name="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                    leftElement={(
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                    )}
+                    rightElement={(
                         <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3.5 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white text-[15px] font-semibold cursor-pointer transition-all shadow-[0_4px_12px_rgba(99,102,241,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(99,102,241,0.3)] active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none"
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-slate-400 transition hover:text-indigo-600"
                         >
-                            {loading ? (
-                                <span className="inline-flex items-center gap-2">
-                                    <span className="w-[18px] h-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Đang xử lý...
-                                </span>
-                            ) : 'Đăng nhập'}
+                            {showPassword ? (
+                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" /><path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" /></svg>
+                            ) : (
+                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
+                            )}
                         </button>
+                    )}
+                />
+
+                <div className="flex justify-end">
+                    <Link to="/forgot-password" className="text-sm font-medium text-slate-500 transition hover:text-indigo-700 hover:underline">
+                        Quên mật khẩu?
+                    </Link>
+                </div>
+
+                <SubmitButton htmlType="submit" loading={loading}>
+                    Đăng nhập
+                </SubmitButton>
             </form>
         </AuthShell>
     );

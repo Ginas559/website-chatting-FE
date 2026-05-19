@@ -11,6 +11,12 @@ export const loginUser = createAsyncThunk(
             if (res && res.errCode === 0) {
                 localStorage.setItem('accessToken', res.accessToken);
                 localStorage.setItem('refreshToken', res.refreshToken);
+                if (res.user?.id) {
+                    localStorage.setItem('userId', String(res.user.id));
+                }
+                if (res.user) {
+                    localStorage.setItem('authUser', JSON.stringify(res.user));
+                }
                 return res;
             } else {
                 return rejectWithValue(res);
@@ -58,6 +64,14 @@ export const verifyOtp = createAsyncThunk(
                 localStorage.setItem('refreshToken', res.refreshToken);
             }
 
+            if (res?.user?.id) {
+                localStorage.setItem('userId', String(res.user.id));
+            }
+
+            if (res?.user) {
+                localStorage.setItem('authUser', JSON.stringify(res.user));
+            }
+
             localStorage.removeItem('tempToken');
             localStorage.removeItem('registerEmail');
 
@@ -95,6 +109,8 @@ export const logoutUser = createAsyncThunk(
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('tempToken');
         localStorage.removeItem('registerEmail');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('authUser');
     }
 );
 
