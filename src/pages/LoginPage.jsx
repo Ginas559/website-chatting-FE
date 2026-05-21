@@ -37,7 +37,7 @@ const LoginPage = () => {
                 } else if (roleId === 'R3') {
                     navigate('/moderator/users');
                 } else {
-                    navigate('/user/profile');
+                    navigate('/');
                 }
             }, 800);
         }
