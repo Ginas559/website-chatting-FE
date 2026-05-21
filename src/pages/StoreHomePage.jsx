@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { LeftOutlined, RightOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import { getHomeArticlesApi, getHomeProductsApi } from '../util/api';
 import { getCartCount } from '../util/cart';
@@ -30,9 +30,9 @@ const decodeJwtPayload = (token) => {
     }
 };
 
-const ProductSection = ({ code, title, subtitle, products, showSold = false }) => {
+const ProductSection = ({ id, code, title, subtitle, products, showSold = false }) => {
     return (
-        <section className="mt-10">
+        <section id={id} className="mt-10">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <div className="text-xs font-black uppercase tracking-[0.22em] text-orange-600">{code}</div>
@@ -57,6 +57,91 @@ const ProductSection = ({ code, title, subtitle, products, showSold = false }) =
                         </div>
                     </Link>
                 ))}
+            </div>
+        </section>
+    );
+};
+
+const HorizontalProductSection = ({
+    id,
+    code,
+    title,
+    subtitle,
+    products,
+    page,
+    totalPages,
+    onPrev,
+    onNext,
+    metricLabel,
+    metricKey,
+    metricTone = 'text-emerald-600',
+}) => {
+    const safePage = Math.max(page || 1, 1);
+    const safeTotalPages = Math.max(totalPages || 1, 1);
+
+    return (
+        <section id={id} className="mt-10">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <div className="text-xs font-black uppercase tracking-[0.35em] text-red-600">{code}</div>
+                    <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 md:text-[2.5rem]">{title}</h2>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4">
+                    <p className="text-sm text-slate-500 md:text-base">{subtitle}</p>
+                    <div className="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-white px-1 py-1 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                        <button
+                            type="button"
+                            onClick={onPrev}
+                            disabled={safePage <= 1}
+                            className="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-35"
+                            aria-label="Trang trước"
+                        >
+                            <LeftOutlined />
+                        </button>
+                        <div className="min-w-[112px] px-4 text-center text-[15px] font-bold text-slate-700">
+                            Trang {safePage}/{safeTotalPages}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onNext}
+                            disabled={safePage >= safeTotalPages}
+                            className="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-35"
+                            aria-label="Trang sau"
+                        >
+                            <RightOutlined />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto pb-4">
+                <div className="grid grid-flow-col auto-cols-[260px] gap-6 md:auto-cols-[280px] xl:auto-cols-[300px]">
+                    {products.map((product) => (
+                        <Link
+                            key={product.id || product.slug}
+                            to={`/product/${product.slug || product.id}`}
+                            className="group overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
+                        >
+                            <div className="relative aspect-[5/4] overflow-hidden bg-slate-100 md:aspect-[4/3]">
+                                <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                                {product.discount > 0 ? <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white">-{product.discount}%</span> : null}
+                                <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-700 shadow-sm backdrop-blur">
+                                    {code}
+                                </span>
+                            </div>
+                            <div className="p-4 text-left md:p-5">
+                                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{product.brand}</div>
+                                <h3 className="mt-2 min-h-[54px] text-[17px] font-bold leading-7 text-slate-900">{product.name}</h3>
+                                <div className="mt-3 text-[17px] font-black text-orange-600">{formatVnd(product.price)}</div>
+                                <div className="text-sm text-slate-400 line-through">{formatVnd(product.oldPrice)}</div>
+                                <div className={`mt-3 text-sm font-semibold ${metricTone}`}>
+                                    {metricLabel}: {Number(product[metricKey] || 0).toLocaleString('vi-VN')}
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
             </div>
         </section>
     );
@@ -96,9 +181,14 @@ const StoreHomePage = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const [sections, setSections] = useState({
-        promotion: [],
-        latest: [],
-        bestseller: [],
+        promotion: { items: [], page: 1, totalPages: 1 },
+        latest: { items: [], page: 1, totalPages: 1 },
+        bestseller: { items: [], page: 1, totalPages: 1 },
+        mostViewed: { items: [], page: 1, totalPages: 1 },
+    });
+    const [sectionPages, setSectionPages] = useState({
+        bestseller: 1,
+        mostViewed: 1,
     });
     const [articles, setArticles] = useState([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
@@ -106,6 +196,7 @@ const StoreHomePage = () => {
     const [loadError, setLoadError] = useState('');
     const [searchValue, setSearchValue] = useState('');
     const [cartCount, setCartCount] = useState(0);
+    const [activeSection, setActiveSection] = useState('khuyen-mai');
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -113,12 +204,19 @@ const StoreHomePage = () => {
             setLoadError('');
 
             try {
-                const res = await getHomeProductsApi(8);
+                const res = await getHomeProductsApi({
+                    limit: 10,
+                    promotionPage: 1,
+                    latestPage: 1,
+                    bestsellerPage: sectionPages.bestseller,
+                    mostViewedPage: sectionPages.mostViewed,
+                });
                 if (res?.errCode === 0 && res?.data) {
                     setSections({
-                        promotion: res.data.promotion || [],
-                        latest: res.data.latest || [],
-                        bestseller: res.data.bestseller || [],
+                        promotion: res.data.promotion || { items: [] },
+                        latest: res.data.latest || { items: [] },
+                        bestseller: res.data.bestseller || { items: [] },
+                        mostViewed: res.data.mostViewed || { items: [] },
                     });
                     return;
                 }
@@ -131,6 +229,18 @@ const StoreHomePage = () => {
             }
         };
 
+        fetchProducts();
+    }, [sectionPages]);
+
+    const scrollToSection = (targetId) => {
+        setActiveSection(targetId);
+        const el = document.getElementById(targetId);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    useEffect(() => {
         const fetchArticles = async () => {
             setLoadingArticles(true);
             try {
@@ -145,7 +255,6 @@ const StoreHomePage = () => {
             }
         };
 
-        fetchProducts();
         fetchArticles();
     }, []);
 
@@ -194,6 +303,24 @@ const StoreHomePage = () => {
             return;
         }
         navigate('/search');
+    };
+
+    const updateSectionPage = (sectionName, direction) => {
+        setSectionPages((currentPages) => {
+            const currentSection = sections[sectionName] || {};
+            const currentPage = currentSection.page || currentPages[sectionName] || 1;
+            const totalPages = currentSection.totalPages || 1;
+            const nextPage = Math.max(1, Math.min(totalPages, currentPage + direction));
+
+            if (nextPage === currentPage) {
+                return currentPages;
+            }
+
+            return {
+                ...currentPages,
+                [sectionName]: nextPage,
+            };
+        });
     };
 
     return (
@@ -296,28 +423,66 @@ const StoreHomePage = () => {
 
                 {!loadingProducts && !loadError ? (
                     <>
-                        <div id="khuyen-mai">
-                            <ProductSection
-                                code="PROMOTION"
-                                title="Khuyến mãi hot"
-                                subtitle="Ưu đãi số lượng có hạn"
-                                products={sections.promotion}
-                            />
+                        <div className="mt-8 mb-6 flex flex-wrap items-center gap-3">
+                            {[
+                                { id: 'khuyen-mai', label: 'Khuyến mãi hot' },
+                                { id: 'latest', label: 'Sản phẩm mới nhất' },
+                                { id: 'bestseller', label: 'Bán chạy nhất' },
+                                { id: 'mostViewed', label: 'Xem nhiều nhất' },
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => scrollToSection(item.id)}
+                                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${activeSection === item.id ? 'bg-red-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
                         </div>
-
                         <ProductSection
-                            code="LATEST"
-                            title="Sản phẩm mới nhất"
-                            subtitle="Vừa mở bán tại hệ thống"
-                            products={sections.latest}
+                            id="khuyen-mai"
+                            code="PROMOTION"
+                            title="Khuyến mãi hot"
+                            subtitle="Ưu đãi số lượng có hạn"
+                            products={sections.promotion.items || []}
                         />
 
                         <ProductSection
+                            id="latest"
+                            code="LATEST"
+                            title="Sản phẩm mới nhất"
+                            subtitle="Vừa mở bán tại hệ thống"
+                            products={sections.latest.items || []}
+                        />
+
+                        <HorizontalProductSection
+                            id="bestseller"
                             code="BESTSELLER"
                             title="Bán chạy nhất"
                             subtitle="Top sản phẩm được chọn nhiều"
-                            products={sections.bestseller}
-                            showSold
+                            products={sections.bestseller.items || []}
+                            page={sections.bestseller.page || 1}
+                            totalPages={sections.bestseller.totalPages || 1}
+                            onPrev={() => updateSectionPage('bestseller', -1)}
+                            onNext={() => updateSectionPage('bestseller', 1)}
+                            metricLabel="Đã bán"
+                            metricKey="sold"
+                            metricTone="text-emerald-600"
+                        />
+
+                        <HorizontalProductSection
+                            id="mostViewed"
+                            code="MOST-VIEWED"
+                            title="Xem nhiều nhất"
+                            subtitle="Những sản phẩm được quan tâm nhiều"
+                            products={sections.mostViewed.items || []}
+                            page={sections.mostViewed.page || 1}
+                            totalPages={sections.mostViewed.totalPages || 1}
+                            onPrev={() => updateSectionPage('mostViewed', -1)}
+                            onNext={() => updateSectionPage('mostViewed', 1)}
+                            metricLabel="Lượt xem"
+                            metricKey="views"
+                            metricTone="text-orange-600"
                         />
                     </>
                 ) : null}

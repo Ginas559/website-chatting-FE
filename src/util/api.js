@@ -15,6 +15,10 @@ export const logoutApi = (refreshToken) => {
 };
 
 export const getHomeProductsApi = (limit = 8) => {
+    if (typeof limit === 'object' && limit !== null) {
+        return axios.get('products/home', { params: limit });
+    }
+
     return axios.get(`products/home?limit=${limit}`);
 };
 
