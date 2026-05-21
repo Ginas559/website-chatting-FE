@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { LogoutOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
@@ -7,14 +7,17 @@ import { getProductCategoriesApi, searchProductsApi } from '../util/api';
 import { getCartCount } from '../util/cart';
 
 const priceRanges = [
-    { label: '0đ - 500.000đ', minPrice: 0, maxPrice: 500000 },
-    { label: '500.000đ - 1.000.000đ', minPrice: 500000, maxPrice: 1000000 },
-    { label: '1.000.000đ - 2.000.000đ', minPrice: 1000000, maxPrice: 2000000 },
-    { label: '2.000.000đ - 3.000.000đ', minPrice: 2000000, maxPrice: 3000000 },
-    { label: '3.000.000đ+', minPrice: 3000000, maxPrice: '' },
+    { label: '0đ - 2.000.000đ', minPrice: 0, maxPrice: 2000000 },
+    { label: '2.000.000đ - 5.000.000đ', minPrice: 2000000, maxPrice: 5000000 },
+    { label: '5.000.000đ - 10.000.000đ', minPrice: 5000000, maxPrice: 10000000 },
+    { label: '10.000.000đ - 20.000.000đ', minPrice: 10000000, maxPrice: 20000000 },
+    { label: '20.000.000đ - 40.000.000đ', minPrice: 20000000, maxPrice: 40000000 },
+    { label: '40.000.000đ - 60.000.000đ', minPrice: 40000000, maxPrice: 60000000 },
+    { label: '60.000.000đ+', minPrice: 60000000, maxPrice: '' },
 ];
 
 const ratingOptions = [5, 4, 3];
+const PAGE_SIZE = 12;
 
 const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     style: 'currency',
@@ -37,19 +40,36 @@ const SearchPage = () => {
     const [categories, setCategories] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [totalProducts, setTotalProducts] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [page, setPage] = useState(1);
     const [searchValue, setSearchValue] = useState(searchParams.get('q') || '');
     const [cartCount, setCartCount] = useState(0);
+
+    const searchParamsString = searchParams.toString();
+    const loadMoreRef = useRef(null);
+    const isFetchingRef = useRef(false);
+    const loadMoreLockRef = useRef(false);
+    const activeQueryRef = useRef(searchParamsString);
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
 
-    const searchParamsString = searchParams.toString();
     const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParamsString]);
 
     useEffect(() => {
         setSearchValue(filters.q || '');
     }, [filters.q]);
+
+    useEffect(() => {
+        setProducts([]);
+        setTotalProducts(0);
+        setHasMore(true);
+        setPage(1);
+        loadMoreLockRef.current = false;
+    }, [searchParamsString]);
 
     useEffect(() => {
         const syncCartCount = () => setCartCount(getCartCount());
@@ -90,6 +110,11 @@ const SearchPage = () => {
         }
     };
 
+    const clearFilters = () => {
+        setSearchParams(new URLSearchParams(), { replace: true });
+        setSearchValue('');
+    };
+
     useEffect(() => {
         const loadCategories = async () => {
             const res = await getProductCategoriesApi();
@@ -104,8 +129,28 @@ const SearchPage = () => {
     }, []);
 
     useEffect(() => {
+        let isCancelled = false;
+
         const loadProducts = async () => {
-            setLoading(true);
+            const isQueryChanged = activeQueryRef.current !== searchParamsString;
+
+            if (isQueryChanged && page !== 1) {
+                activeQueryRef.current = searchParamsString;
+                setProducts([]);
+                setTotalProducts(0);
+                setHasMore(true);
+                setPage(1);
+                loadMoreLockRef.current = false;
+                return;
+            }
+
+            activeQueryRef.current = searchParamsString;
+
+            const isFirstPage = page === 1;
+
+            setLoading(isFirstPage);
+            setLoadingMore(!isFirstPage);
+            isFetchingRef.current = true;
 
             const params = {
                 q: filters.q || undefined,
@@ -115,20 +160,79 @@ const SearchPage = () => {
                 minRating: filters.minRating || undefined,
                 inStock: filters.inStock ? 'true' : undefined,
                 sort: filters.sort,
+                page,
+                limit: PAGE_SIZE,
             };
 
             const res = await searchProductsApi(params);
-            if (res?.errCode === 0 && Array.isArray(res?.data)) {
-                setProducts(res.data);
-            } else {
+            if (isCancelled) {
+                return;
+            }
+
+            if (res?.errCode === 0 && res?.data) {
+                const items = Array.isArray(res.data.items) ? res.data.items : [];
+                const total = Number(res.data.total ?? items.length);
+                const nextHasMore = typeof res.data.hasMore === 'boolean' ? res.data.hasMore : page * PAGE_SIZE < total;
+
+                setProducts((currentProducts) => (page === 1 ? items : [...currentProducts, ...items]));
+                setTotalProducts(total);
+                setHasMore(nextHasMore);
+            } else if (page === 1) {
                 setProducts([]);
+                setTotalProducts(0);
+                setHasMore(false);
             }
 
             setLoading(false);
+            setLoadingMore(false);
+            isFetchingRef.current = false;
+            loadMoreLockRef.current = false;
         };
 
         loadProducts();
-    }, [searchParamsString]);
+
+        return () => {
+            isCancelled = true;
+            isFetchingRef.current = false;
+        };
+    }, [searchParamsString, page]);
+
+    useEffect(() => {
+        let isCancelled = false;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (
+                    entry.isIntersecting &&
+                    hasMore &&
+                    !loading &&
+                    !loadingMore &&
+                    !isFetchingRef.current &&
+                    !loadMoreLockRef.current
+                ) {
+                    loadMoreLockRef.current = true;
+                    if (!isCancelled) {
+                        setPage((currentPage) => currentPage + 1);
+                    }
+                }
+            },
+            {
+                root: null,
+                rootMargin: '320px',
+                threshold: 0,
+            },
+        );
+
+        const target = loadMoreRef.current;
+        if (target) {
+            observer.observe(target);
+        }
+
+        return () => {
+            isCancelled = true;
+            observer.disconnect();
+        };
+    }, [hasMore, loading, loadingMore, products.length]);
 
     const selectedCategories = useMemo(() => new Set(filters.categoryIds), [filters.categoryIds]);
 
@@ -213,13 +317,24 @@ const SearchPage = () => {
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
                 <div className="mb-6 text-left">
                     <h1 className="text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Kết quả tìm kiếm cho: "{filters.q || 'Tất cả'}"</h1>
-                    <p className="mt-2 text-slate-500">Tìm thấy {products.length} sản phẩm</p>
+                    <p className="mt-2 text-slate-500">
+                        {loading && products.length === 0 ? 'Đang tải...' : `Tìm thấy ${totalProducts} sản phẩm`}
+                    </p>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
                     <aside className="min-w-0 space-y-4 text-left">
                         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <h3 className="text-lg font-bold text-slate-900">Khoảng giá</h3>
+                            <div className="flex items-center justify-between gap-3">
+                                <h3 className="text-lg font-bold text-slate-900">Khoảng giá</h3>
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                                >
+                                    Xóa lọc
+                                </button>
+                            </div>
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                 <label className="block">
                                     <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Từ</span>
@@ -238,12 +353,14 @@ const SearchPage = () => {
                                         value={filters.maxPrice}
                                         onChange={(e) => updateSearchParams({ maxPrice: e.target.value })}
                                         inputMode="numeric"
-                                        placeholder="3000000"
+                                        placeholder="60000000"
                                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-red-500 focus:bg-white"
                                     />
                                 </label>
                             </div>
-                            <div className="mt-3 text-xs text-slate-500">{filters.minPrice || 0}đ - {filters.maxPrice || '3.000.000'}đ</div>
+                            <div className="mt-3 text-xs text-slate-500">
+                                {(filters.minPrice ? Number(filters.minPrice).toLocaleString('vi-VN') : '0')}đ - {filters.maxPrice ? `${Number(filters.maxPrice).toLocaleString('vi-VN')}đ` : '60.000.000đ+'}
+                            </div>
                             <div className="mt-3 space-y-2">
                                 {priceRanges.map((range) => (
                                     <label key={range.label} className="flex items-center gap-3 rounded-2xl px-1 py-1 text-sm text-slate-700">
@@ -298,7 +415,7 @@ const SearchPage = () => {
 
                     <section className="min-w-0">
                         <div className="mb-5 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
-                            <span className="font-semibold text-slate-700">{loading ? 'Đang tải...' : 'Sắp xếp'}</span>
+                            <span className="font-semibold text-slate-700">{loading && products.length === 0 ? 'Đang tải...' : 'Sắp xếp'}</span>
                             <select value={filters.sort} onChange={(e) => updateSearchParams({ sort: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-red-500 focus:bg-white xl:w-auto">
                                 <option value="latest">Mới nhất</option>
                                 <option value="popular">Bán chạy</option>
@@ -331,6 +448,26 @@ const SearchPage = () => {
                                 </Link>
                             ))}
                         </div>
+
+                        {loadingMore ? (
+                            <div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-4 text-center text-sm font-semibold text-slate-500 shadow-sm">
+                                Đang tải thêm sản phẩm...
+                            </div>
+                        ) : null}
+
+                        {!loading && !loadingMore && products.length > 0 && !hasMore ? (
+                            <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-emerald-50 px-6 py-4 text-center text-sm font-semibold text-emerald-700 shadow-sm">
+                                Đã tải hết sản phẩm.
+                            </div>
+                        ) : null}
+
+                        {!loading && !loadingMore && products.length === 0 ? (
+                            <div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm font-semibold text-slate-500 shadow-sm">
+                                Không tìm thấy sản phẩm phù hợp.
+                            </div>
+                        ) : null}
+
+                        <div ref={loadMoreRef} className="h-1 w-full" aria-hidden="true" />
                     </section>
                 </div>
             </main>
