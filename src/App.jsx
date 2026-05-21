@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import AuthHomePage from './pages/auth/AuthHomePage';
+import StoreHomePage from './pages/StoreHomePage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage';
@@ -10,6 +10,10 @@ import ModeratorProfilePage from './pages/ModeratorProfilePage';
 import AdminManagementPage from './pages/AdminManagementPage';
 import ModeratorUsersPage from './pages/ModeratorUsersPage';
 import GuestRoute from './components/common/GuestRoute';
+import ProductDetailPage from './pages/ProductDetailPage';
+import ArticleDetailPage from './pages/ArticleDetailPage';
+import SearchPage from './pages/SearchPage';
+import CartPage from './pages/CartPage';
 
 const getRoleIdFromToken = () => {
   const token = localStorage.getItem('accessToken');
@@ -53,12 +57,17 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<AuthHomePage />} />
+        <Route path="/" element={<StoreHomePage />} />
         
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
         <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
         
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+
+        <Route path="/product/:slug" element={<ProductDetailPage />} />
+        <Route path="/article/:slug" element={<ArticleDetailPage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/cart" element={<CartPage />} />
         
         <Route 
           path="/user/profile" 
@@ -93,7 +102,7 @@ function App() {
           } 
         />
         
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );

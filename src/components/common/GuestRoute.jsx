@@ -16,7 +16,7 @@ const GuestRoute = ({ children }) => {
         return <Navigate to="/moderator/profile" />;
     }
 
-    return <Navigate to="/user/profile" />;
+    return <Navigate to="/" />;
 };
 
 export default GuestRoute;

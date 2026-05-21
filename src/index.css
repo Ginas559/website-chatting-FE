@@ -1,7 +1,7 @@
 @import "tailwindcss";
 :root {
   --text: #6b6375;
-  --text-h: #08060d;
+  --text-h: #000000;
   --bg: #fff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
@@ -34,7 +34,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --text: #9ca3af;
-    --text-h: #f3f4f6;
+    --text-h: #000000;
     --bg: #16171d;
     --border: #2e303a;
     --code-bg: #1f2028;
@@ -107,4 +107,44 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+/* Fix for AntD Carousel / react-slick oversized track */
+.slick-slider, .slick-list, .slick-track {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.slick-list {
+  overflow: hidden;
+}
+.slick-slide {
+  width: 100% !important;
+  display: block;
+}
+.slick-slide > div, .slick-slide > img {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Antd carousel wrapper fix */
+.ant-carousel .slick-list,
+.ant-carousel .slick-track {
+  max-width: 100%;
+}
+
+.product-carousel,
+.product-carousel .slick-list,
+.product-carousel .slick-track,
+.product-carousel .slick-slide,
+.product-carousel .slick-slide > div {
+  height: 100%;
+}
+
+.product-carousel .slick-track {
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.product-carousel .slick-slide > div {
+  width: 100% !important;
 }
