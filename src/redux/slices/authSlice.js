@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getAdminProfileApi, getModeratorProfileApi, getUserProfileApi, loginApi, logoutApi, refreshTokenApi } from '../../util/api';
 import authService from '../../services/auth.service';
 import forgotPasswordService from '../../services/forgotPassword.service';
+import { resetCartCache } from '../../util/cart';
 
 export const loginUser = createAsyncThunk(
     'auth/loginUser',
@@ -105,6 +106,7 @@ export const logoutUser = createAsyncThunk(
     async () => {
         const token = localStorage.getItem('refreshToken');
         await logoutApi(token).catch(() => {});
+        resetCartCache();
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('tempToken');

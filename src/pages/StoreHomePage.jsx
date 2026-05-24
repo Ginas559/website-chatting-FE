@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LeftOutlined, RightOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import { getHomeArticlesApi, getHomeProductsApi } from '../util/api';
-import { getCartCount } from '../util/cart';
+import { fetchCart, getCartCount } from '../util/cart';
 
 const formatVnd = (value) => {
     return Number(value || 0).toLocaleString('vi-VN', {
@@ -259,13 +259,28 @@ const StoreHomePage = () => {
     }, []);
 
     useEffect(() => {
+        let isMounted = true;
+
         const syncCartCount = () => setCartCount(getCartCount());
-        syncCartCount();
+        const loadCartCount = async () => {
+            try {
+                await fetchCart();
+            } catch {
+                // keep cached count if backend is unavailable
+            } finally {
+                if (isMounted) {
+                    syncCartCount();
+                }
+            }
+        };
+
+        loadCartCount();
 
         window.addEventListener('cart:updated', syncCartCount);
         window.addEventListener('storage', syncCartCount);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('cart:updated', syncCartCount);
             window.removeEventListener('storage', syncCartCount);
         };
