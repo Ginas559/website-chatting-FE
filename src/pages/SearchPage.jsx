@@ -9,7 +9,7 @@ import { fetchCart, getCartCount } from '../util/cart';
 const priceRanges = [
     { label: '0đ - 2.000.000đ', minPrice: 0, maxPrice: 2000000 },
     { label: '2.000.000đ - 5.000.000đ', minPrice: 2000000, maxPrice: 5000000 },
-    { label: '5.000.000đ - 10.000.000đ', minPrice: 5000000, maxPrice: 10000000 },
+    { label: '5.000.000đ - 10.000.000đ', minPrice: 2000000, maxPrice: 5000000 },
     { label: '10.000.000đ - 20.000.000đ', minPrice: 10000000, maxPrice: 20000000 },
     { label: '20.000.000đ - 40.000.000đ', minPrice: 20000000, maxPrice: 40000000 },
     { label: '40.000.000đ - 60.000.000đ', minPrice: 40000000, maxPrice: 60000000 },
@@ -79,7 +79,7 @@ const SearchPage = () => {
             try {
                 await fetchCart();
             } catch {
-                // keep cached count if backend is unavailable
+                
             } finally {
                 if (isMounted) {
                     syncCartCount();
@@ -289,7 +289,6 @@ const SearchPage = () => {
                             placeholder="Tìm kiếm điện thoại, laptop, tablet..."
                             className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
                         />
-
                     </form>
 
                     <Link to="/search" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
