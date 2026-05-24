@@ -1,79 +1,161 @@
-const CART_STORAGE_KEY = 'doan_cart_items';
+import axios from './axios.customize';
 
-const readCart = () => {
+const CART_CACHE_KEY = 'doan_cart_snapshot';
+
+const emptyCartSnapshot = () => ({
+    cartId: null,
+    userId: null,
+    items: [],
+    totalItems: 0,
+    totalQuantity: 0,
+    subtotal: 0,
+    pagination: null,
+});
+
+const safeParse = (value, fallback) => {
     try {
-        const parsed = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
-        return Array.isArray(parsed) ? parsed : [];
+        return JSON.parse(value);
     } catch {
-        return [];
+        return fallback;
     }
 };
 
-const writeCart = (items) => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+const readSnapshot = () => {
+    const cached = safeParse(localStorage.getItem(CART_CACHE_KEY) || 'null', null);
+
+    if (!cached || typeof cached !== 'object') {
+        return emptyCartSnapshot();
+    }
+
+    return {
+        ...emptyCartSnapshot(),
+        ...cached,
+        items: Array.isArray(cached.items) ? cached.items : [],
+    };
+};
+
+const emitCartUpdated = () => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
     window.dispatchEvent(new CustomEvent('cart:updated'));
 };
 
-export const getCartItems = () => readCart();
+const writeSnapshot = (snapshot) => {
+    const nextSnapshot = {
+        ...emptyCartSnapshot(),
+        ...snapshot,
+        items: Array.isArray(snapshot?.items) ? snapshot.items : [],
+        totalItems: Number(snapshot?.totalItems ?? snapshot?.items?.length ?? 0),
+        totalQuantity: Number(snapshot?.totalQuantity ?? 0),
+        subtotal: Number(snapshot?.subtotal ?? 0),
+    };
 
-export const getCartCount = () => readCart().reduce((sum, item) => sum + Number(item.qty || 0), 0);
+    localStorage.setItem(CART_CACHE_KEY, JSON.stringify(nextSnapshot));
+    emitCartUpdated();
 
-export const addToCart = (product, qty = 1) => {
-    const safeQty = Math.max(1, Number(qty || 1));
-    const items = readCart();
-    const productId = String(product.id || product._id || product.slug);
+    return nextSnapshot;
+};
 
-    const existingIndex = items.findIndex((item) => String(item.id) === productId);
+const normalizeItem = (item) => {
+    const snapshot = item?.snapshot || {};
+    const quantity = Number(item?.quantity ?? item?.qty ?? 0);
+    const unitPrice = Number(item?.unitPrice ?? snapshot.price ?? 0);
 
-    if (existingIndex >= 0) {
-        const current = items[existingIndex];
-        const maxStock = Number(product.stock || current.stock || 9999);
-        items[existingIndex] = {
-            ...current,
-            qty: Math.min(maxStock, Number(current.qty || 1) + safeQty),
-        };
-    } else {
-        items.push({
-            id: productId,
-            slug: product.slug || '',
-            name: product.name || '',
-            brand: product.brand || '',
-            category: product.category || '',
-            image: product.images?.[0] || product.image || '',
-            price: Number(product.price || 0),
-            oldPrice: Number(product.oldPrice || 0),
-            stock: Number(product.stock || 0),
-            qty: safeQty,
-        });
+    return {
+        id: item?.id || item?.cartItemId || item?._id || item?.productId || null,
+        cartItemId: item?.cartItemId || item?._id || item?.id || null,
+        productId: item?.productId || item?.product?._id || null,
+        quantity,
+        qty: quantity,
+        unitPrice,
+        lineTotal: Number(item?.lineTotal ?? unitPrice * quantity),
+        snapshot: {
+            name: snapshot.name || item?.name || item?.product?.name || '',
+            image: snapshot.image || item?.image || item?.product?.image || '',
+            price: Number(snapshot.price ?? item?.price ?? unitPrice ?? 0),
+            brand: snapshot.brand || item?.brand || item?.product?.brand || '',
+        },
+        availability: item?.availability || {
+            inStock: true,
+            stock: null,
+            remainingToIncrease: null,
+            canIncrease: true,
+        },
+        product: item?.product || null,
+    };
+};
+
+const normalizeCartData = (payload) => {
+    const data = payload?.data || payload || {};
+    const items = Array.isArray(data.items) ? data.items.map(normalizeItem) : [];
+    const totalItems = Number(data.totalItems ?? items.length);
+    const totalQuantity = Number(data.totalQuantity ?? items.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
+    const subtotal = Number(data.subtotal ?? items.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0));
+
+    return {
+        cartId: data.cartId ?? null,
+        userId: data.userId ?? null,
+        items,
+        totalItems,
+        totalQuantity,
+        subtotal,
+        pagination: data.pagination || null,
+    };
+};
+
+const isSuccessResponse = (payload) => payload?.success === true || payload?.errCode === 0;
+
+const handleApiResponse = (payload) => {
+    if (!isSuccessResponse(payload)) {
+        throw payload;
     }
 
-    writeCart(items);
-    return items;
+    return writeSnapshot(normalizeCartData(payload));
 };
 
-export const updateCartQty = (id, qty) => {
-    const items = readCart();
-    const nextQty = Math.max(1, Number(qty || 1));
+export const getCartSnapshot = () => readSnapshot();
 
-    const nextItems = items.map((item) => {
-        if (String(item.id) !== String(id)) return item;
-        const maxStock = Number(item.stock || 9999);
-        return {
-            ...item,
-            qty: Math.min(maxStock, nextQty),
-        };
+export const getCartItems = () => readSnapshot().items;
+
+export const getCartCount = () => readSnapshot().totalQuantity;
+
+export const getCartSubtotal = () => readSnapshot().subtotal;
+
+export const fetchCart = async (params = {}) => {
+    const response = await axios.get('cart', { params });
+    return handleApiResponse(response);
+};
+
+export const addToCart = async (product, qty = 1) => {
+    const productId = product?.id || product?._id || product?.productId;
+    const response = await axios.post('cart/items', {
+        productId,
+        quantity: qty,
     });
 
-    writeCart(nextItems);
-    return nextItems;
+    return handleApiResponse(response);
 };
 
-export const removeFromCart = (id) => {
-    const nextItems = readCart().filter((item) => String(item.id) !== String(id));
-    writeCart(nextItems);
-    return nextItems;
+export const updateCartQty = async (productId, qty) => {
+    const response = await axios.patch(`cart/items/${productId}`, {
+        quantity: qty,
+    });
+
+    return handleApiResponse(response);
 };
 
-export const clearCart = () => {
-    writeCart([]);
+export const removeFromCart = async (productId) => {
+    const response = await axios.delete(`cart/items/${productId}`);
+    return handleApiResponse(response);
 };
+
+export const clearCart = async () => {
+    const response = await axios.delete('cart');
+    return handleApiResponse(response);
+};
+
+export const setCartSnapshot = (snapshot) => writeSnapshot(snapshot);
+
+export const resetCartCache = () => writeSnapshot(emptyCartSnapshot());

@@ -4,7 +4,8 @@ import { SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { getProductDetailApi } from '../util/api';
 import { logoutUser } from '../redux/slices/authSlice';
 import { useDispatch, useSelector } from 'react-redux';
-import { addToCart, getCartCount } from '../util/cart';
+import { addToCart, fetchCart, getCartCount } from '../util/cart';
+import StatusAlert from '../components/common/StatusAlert';
 
 const formatVnd = (value) => {
     return Number(value || 0).toLocaleString('vi-VN', {
@@ -49,13 +50,28 @@ const ProductDetailPage = () => {
         load();
     }, [slug]);
     useEffect(() => {
+        let isMounted = true;
+
         const syncCartCount = () => setCartCount(getCartCount());
-        syncCartCount();
+        const loadCartCount = async () => {
+            try {
+                await fetchCart();
+            } catch {
+                // keep cached count when backend is unavailable
+            } finally {
+                if (isMounted) {
+                    syncCartCount();
+                }
+            }
+        };
+
+        loadCartCount();
 
         window.addEventListener('cart:updated', syncCartCount);
         window.addEventListener('storage', syncCartCount);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('cart:updated', syncCartCount);
             window.removeEventListener('storage', syncCartCount);
         };
@@ -80,9 +96,25 @@ const ProductDetailPage = () => {
         navigate('/search');
     };
 
-    const onAddToCart = () => {
-        addToCart(detail, totalQty);
-        setCartCount(getCartCount());
+    const [notice, setNotice] = useState(null);
+    const [noticeType, setNoticeType] = useState('success');
+
+    const showNotice = (message, type = 'success', ms = 2500) => {
+        setNoticeType(type);
+        setNotice(message);
+        window.setTimeout(() => setNotice(null), ms);
+    };
+
+    const onAddToCart = async () => {
+        try {
+            await addToCart(detail, totalQty);
+            setCartCount(getCartCount());
+            showNotice('Thêm vào giỏ hàng thành công', 'success');
+        } catch (error) {
+            console.error('Add to cart failed:', error);
+            const msg = error?.message || 'Thêm vào giỏ hàng thất bại';
+            showNotice(msg, 'error');
+        }
     };
 
     if (loading) {
@@ -165,6 +197,7 @@ const ProductDetailPage = () => {
             </header>
 
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+                {notice ? <StatusAlert type={noticeType}>{notice}</StatusAlert> : null}
                 <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
                     <section className="rounded-[32px] border border-slate-200 bg-white shadow-sm">
                         <div className="relative h-[240px] overflow-hidden rounded-[32px] sm:h-[320px] md:h-[420px] lg:h-[520px]">
