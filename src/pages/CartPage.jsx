@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, MinusOutlined, PlusOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import { clearCart, fetchCart, getCartCount, getCartSnapshot, removeFromCart, updateCartQty } from '../util/cart';
 
@@ -208,6 +208,12 @@ const CartPage = () => {
                     </Link>
 
                     <div className="ml-auto flex flex-wrap items-center gap-3">
+                        {isAuthenticated ? (
+                            <Link className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100" to="/orders">
+                                <SnippetsOutlined />
+                                <span>Đơn hàng</span>
+                            </Link>
+                        ) : null}
                         <Link className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700" to="/cart">
                             <ShoppingCartOutlined />
                             <span>Giỏ hàng ({cartCount})</span>
@@ -352,11 +358,21 @@ const CartPage = () => {
                             <span>Tổng tiền</span>
                             <span>{formatVnd(totalAmount)}</span>
                         </div>
+                        <Link
+                            to="/checkout"
+                            className={`mt-5 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 font-semibold shadow-lg transition ${
+                                items.length && !loading
+                                    ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-700'
+                                    : 'pointer-events-none bg-slate-200 text-slate-400 shadow-none'
+                            }`}
+                        >
+                            Thanh toán
+                        </Link>
                         <button
                             type="button"
                             onClick={clearAll}
                             disabled={!items.length || loading}
-                            className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-red-200 bg-white px-4 py-3 font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             Xóa toàn bộ giỏ hàng
                         </button>

@@ -14,6 +14,9 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import ArticleDetailPage from './pages/ArticleDetailPage';
 import SearchPage from './pages/SearchPage';
 import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import VnpayReturnPage from './pages/VnpayReturnPage';
+import OrdersPage from './pages/OrdersPage';
 
 const getRoleIdFromToken = () => {
   const token = localStorage.getItem('accessToken');
@@ -68,6 +71,9 @@ function App() {
         <Route path="/article/:slug" element={<ArticleDetailPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={isAuthenticated ? <CheckoutPage /> : <Navigate to="/login" />} />
+        <Route path="/orders" element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" />} />
+        <Route path="/vnpay-return" element={<VnpayReturnPage />} />
         
         <Route 
           path="/user/profile" 
