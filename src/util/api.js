@@ -50,6 +50,10 @@ export const getMyOrderDetailApi = (orderIdOrCode) => {
     return axios.get(`orders/my/${orderIdOrCode}`);
 };
 
+export const repayVnpayOrderApi = (orderIdOrCode, bankCode) => {
+    return axios.post(`orders/my/${orderIdOrCode}/pay`, { bankCode });
+};
+
 export const cancelMyOrderApi = (orderIdOrCode, reason = '') => {
     return axios.patch(`orders/my/${orderIdOrCode}/cancel`, { reason });
 };
