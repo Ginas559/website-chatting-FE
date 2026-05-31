@@ -26,6 +26,14 @@ export const getProductDetailApi = (slug) => {
     return axios.get(`products/${slug}`);
 };
 
+export const getProductReviewsApi = (slug, params = {}) => {
+    return axios.get(`reviews/products/${slug}`, { params });
+};
+
+export const createProductReviewApi = (payload) => {
+    return axios.post('reviews', payload);
+};
+
 export const getProductCategoriesApi = () => {
     return axios.get('products/categories');
 };

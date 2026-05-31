@@ -3,7 +3,7 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 
-const backendTarget = 'http://localhost:8080'
+const backendTarget = 'http://localhost:8088'
 
 export default defineConfig({
   plugins: [

@@ -157,6 +157,8 @@ const canShowCancelButton = (order) => ['NEW', 'PREPARING'].includes(order?.stat
 
 const getFirstItem = (order) => Array.isArray(order?.items) && order.items.length ? order.items[0] : null;
 
+const canReviewOrder = (order) => order?.status === 'DELIVERED';
+
 const ORDER_TIMELINE = ['NEW', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED'];
 
 const isCancelStatus = (status) => ['CANCELLED', 'CANCEL_REQUESTED'].includes(status);
@@ -588,6 +590,14 @@ const OrdersPage = () => {
                                                     <div className="text-sm text-slate-500">Tổng thanh toán</div>
                                                     <div className="text-base font-medium text-red-600">{formatVnd(order.totalAmount)}</div>
                                                     <div className="mt-2 flex flex-wrap justify-start gap-2 sm:justify-end">
+                                                        {canReviewOrder(order) && firstItem?.snapshot?.slug ? (
+                                                            <Link
+                                                                to={`/product/${firstItem.snapshot.slug}#reviews`}
+                                                                className="inline-flex items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 transition hover:border-amber-300 hover:bg-amber-100"
+                                                            >
+                                                                Đánh giá
+                                                            </Link>
+                                                        ) : null}
                                                         {canRepayVnpayOrder(order) ? (
                                                             <button
                                                                 type="button"
@@ -693,7 +703,7 @@ const OrdersPage = () => {
                                             </div>
                                             <div className="mt-5 space-y-4">
                                                 {(selectedOrder.items || []).map((item) => (
-                                                    <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                                         <div className="flex min-w-0 items-center gap-3">
                                                             <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-16 w-16 shrink-0 rounded-lg object-contain" />
                                                             <div className="min-w-0 text-left">
@@ -701,7 +711,17 @@ const OrdersPage = () => {
                                                                 <div className="mt-1 text-sm font-medium">{formatVnd(item.lineTotal)}</div>
                                                             </div>
                                                         </div>
+                                                    <div className="flex items-center gap-3">
                                                         <div className="text-sm font-medium">Số lượng: {item.quantity}</div>
+                                                        {selectedOrder.status === 'DELIVERED' && item.snapshot?.slug ? (
+                                                            <Link
+                                                                to={`/product/${item.snapshot.slug}#reviews`}
+                                                                className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 transition hover:border-amber-300 hover:bg-amber-100"
+                                                            >
+                                                                Đánh giá
+                                                            </Link>
+                                                        ) : null}
+                                                    </div>
                                                     </div>
                                                 ))}
                                             </div>
