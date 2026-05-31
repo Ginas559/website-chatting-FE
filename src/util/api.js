@@ -34,6 +34,26 @@ export const searchProductsApi = (params = {}) => {
     return axios.get('products', { params });
 };
 
+export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode }) => {
+    return axios.post('orders/checkout', { shippingInfo, paymentMethod, bankCode });
+};
+
+export const verifyVnpayReturnApi = (params = {}) => {
+    return axios.get('payments/vnpay-return', { params });
+};
+
+export const getMyOrdersApi = (params = {}) => {
+    return axios.get('orders/my', { params });
+};
+
+export const getMyOrderDetailApi = (orderIdOrCode) => {
+    return axios.get(`orders/my/${orderIdOrCode}`);
+};
+
+export const cancelMyOrderApi = (orderIdOrCode, reason = '') => {
+    return axios.patch(`orders/my/${orderIdOrCode}/cancel`, { reason });
+};
+
 export const getHomeArticlesApi = (limit = 6) => {
     return axios.get(`articles/home?limit=${limit}`);
 };

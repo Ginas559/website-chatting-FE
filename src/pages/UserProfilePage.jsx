@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { HomeOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import { clearProfileFeedback, fetchProfile, resetProfileState, saveProfile } from '../redux/slices/profileSlice';
 import ProfileInput from '../components/profile/ProfileInput';
@@ -123,32 +124,31 @@ const ProfileEditor = ({
             />
 
             <ProfileForm
-                title="Thông tin profile"
-                description="PATCH sẽ bỏ qua field rỗng, tránh lỗi validation và chỉ cập nhật các thông tin bạn đã nhập."
+                title="Thông tin cá nhân"
                 onSubmit={handleSubmit}
                 footer={(
                     <button
                         type="submit"
                         disabled={saving}
-                        className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                        className="inline-flex w-full items-center justify-center rounded-2xl bg-red-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-200 transition hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                     >
-                        {saving ? 'Đang lưu...' : 'Lưu profile'}
+                        {saving ? 'Đang lưu...' : 'Lưu thông tin'}
                     </button>
                 )}
             >
-                <div className="mb-6 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-left text-sm text-sky-700">
-                    {completion}% hồ sơ đã được điền. Nên cập nhật avatar, bio và địa chỉ để phần profile nhìn hoàn chỉnh hơn.
+                <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-left text-sm text-orange-700">
+                    Hồ sơ đã hoàn thiện {completion}%. Bạn có thể cập nhật thêm số điện thoại, địa chỉ và ảnh đại diện.
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2">
-                    <ProfileInput label="First name" name="firstName" value={form.firstName} onChange={handleChange} placeholder="John" />
-                    <ProfileInput label="Last name" name="lastName" value={form.lastName} onChange={handleChange} placeholder="Doe" />
-                    <ProfileInput label="Phone" name="phone" value={form.phone} onChange={handleChange} placeholder="0123456789" />
-                    <ProfileInput label="Avatar URL" name="avatar" value={form.avatar} onChange={handleChange} placeholder="https://..." />
-                    <ProfileInput label="Address" name="address" value={form.address} onChange={handleChange} placeholder="123 Main St" className="md:col-span-2" />
-                    <ProfileInput label="City" name="city" value={form.city} onChange={handleChange} placeholder="New York" />
-                    <ProfileInput label="Country" name="country" value={form.country} onChange={handleChange} placeholder="USA" />
-                    <ProfileInput label="Bio" multiline name="bio" value={form.bio} onChange={handleChange} placeholder="Short introduction..." className="md:col-span-2" rows={5} />
+                    <ProfileInput label="Tên" name="firstName" value={form.firstName} onChange={handleChange} placeholder="Nguyễn" />
+                    <ProfileInput label="Họ và tên đệm" name="lastName" value={form.lastName} onChange={handleChange} placeholder="Văn A" />
+                    <ProfileInput label="Số điện thoại" name="phone" value={form.phone} onChange={handleChange} placeholder="0123456789" />
+                    <ProfileInput label="Ảnh đại diện URL" name="avatar" value={form.avatar} onChange={handleChange} placeholder="https://..." />
+                    <ProfileInput label="Địa chỉ" name="address" value={form.address} onChange={handleChange} placeholder="Số nhà, đường, phường/xã" className="md:col-span-2" />
+                    <ProfileInput label="Thành phố" name="city" value={form.city} onChange={handleChange} placeholder="TP. Hồ Chí Minh" />
+                    <ProfileInput label="Quốc gia" name="country" value={form.country} onChange={handleChange} placeholder="Việt Nam" />
+                    <ProfileInput label="Giới thiệu ngắn" multiline name="bio" value={form.bio} onChange={handleChange} placeholder="Một vài dòng giới thiệu..." className="md:col-span-2" rows={5} />
                 </div>
             </ProfileForm>
         </>
@@ -197,23 +197,53 @@ const UserProfilePage = () => {
     const profileData = data || {};
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.10),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.12),_transparent_30%),linear-gradient(135deg,#f8fafc_0%,#eef2ff_50%,#f8fafc_100%)] px-4 py-10 text-slate-900">
-            <div className="mx-auto max-w-6xl">
-                <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <p className="text-sm font-bold uppercase tracking-[0.28em] text-indigo-600">Profile</p>
-                        <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900">Chỉnh sửa hồ sơ cá nhân</h1>
-                        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                            Trang này fetch dữ liệu từ API bài 02, dùng Redux Toolkit để quản lý state và Axios interceptor để tự gắn Bearer token.
-                        </p>
-                    </div>
+        <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
+            <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
+                <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
+                    <Link to="/" className="inline-flex items-center gap-3">
+                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-xl font-black text-white shadow-lg shadow-orange-300/40">S</span>
+                        <div className="text-left">
+                            <div className="text-lg font-black text-slate-900">SmartZone Store</div>
+                            <div className="text-xs uppercase tracking-[0.2em] text-orange-600">Tech Lifestyle</div>
+                        </div>
+                    </Link>
 
-                    <button
-                        onClick={handleLogout}
-                        className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50"
-                    >
-                        Đăng xuất
-                    </button>
+                    <div className="ml-auto flex flex-wrap items-center gap-3">
+                        <Link to="/" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                            <HomeOutlined />
+                            Trang chủ
+                        </Link>
+                        <Link to="/search" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                            <SearchOutlined />
+                            Tìm kiếm
+                        </Link>
+                        <Link to="/orders" className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100">
+                            <SnippetsOutlined />
+                            Đơn hàng
+                        </Link>
+                        <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100">
+                            <ShoppingCartOutlined />
+                            Giỏ hàng
+                        </Link>
+                        <button
+                            onClick={handleLogout}
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                        >
+                            <LogoutOutlined />
+                            Đăng xuất
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+                <div className="mb-6 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Tài khoản thành viên</p>
+                    <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Thông tin cá nhân</h1>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Cập nhật thông tin giao hàng và liên hệ để đặt hàng nhanh hơn trong các lần mua tiếp theo.
+                    </p>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
@@ -229,7 +259,7 @@ const UserProfilePage = () => {
                         onLogout={handleLogout}
                     />
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
