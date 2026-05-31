@@ -50,6 +50,8 @@ const ProfileSummaryCard = ({
     const email = profileData.email || userEmail || '';
     const displayName = userName || [profileData.firstName, profileData.lastName].filter(Boolean).join(' ').trim() || 'Người dùng';
     const avatarFallback = displayName.slice(0, 1).toUpperCase();
+    const rewardPoints = Number(profileData.rewardPoints || 0);
+    const rewardCoupons = Array.isArray(profileData.rewardCoupons) ? profileData.rewardCoupons : [];
 
     const completion = useMemo(() => getCompletion(profileData), [profileData]);
     const filledFieldCount = Math.round((completion / 100) * PROFILE_FIELDS.length);
@@ -135,6 +137,35 @@ const ProfileSummaryCard = ({
                         <span>{updatedAt}</span>
                     </div>
                 </div>
+
+                {rewardPoints > 0 || rewardCoupons.length > 0 ? (
+                    <div className="mt-5 grid w-full gap-3 text-left sm:grid-cols-2">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Điểm tích lũy</p>
+                            <p className="mt-2 text-2xl font-black text-emerald-700">{rewardPoints}</p>
+                            <p className="mt-1 text-xs text-emerald-700/80">Dùng cho lần mua sau</p>
+                        </div>
+                        <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-700">Mã giảm giá</p>
+                            <p className="mt-2 text-2xl font-black text-orange-700">{rewardCoupons.length}</p>
+                            <p className="mt-1 text-xs text-orange-700/80">Mã còn hiệu lực trong kho</p>
+                        </div>
+                    </div>
+                ) : null}
+
+                {rewardCoupons.length ? (
+                    <div className="mt-4 w-full rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+                        <div className="flex items-center justify-between gap-3">
+                            <h3 className="text-sm font-bold text-slate-900">Mã thưởng gần nhất</h3>
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{rewardCoupons.length} mã</span>
+                        </div>
+                        <div className="mt-3 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3">
+                            <div className="text-xs uppercase tracking-[0.18em] text-orange-700">{rewardCoupons[0].code}</div>
+                            <div className="mt-1 text-sm font-semibold text-slate-900">Giảm {rewardCoupons[0].discountPercent}% cho đơn tiếp theo</div>
+                            <div className="mt-1 text-xs text-slate-500">Hạn dùng: {rewardCoupons[0].expiresAt ? new Date(rewardCoupons[0].expiresAt).toLocaleDateString('vi-VN') : 'Chưa có'}</div>
+                        </div>
+                    </div>
+                ) : null}
 
                 <div className="mt-5 grid w-full gap-3">
                     {statCards.map((card) => {
