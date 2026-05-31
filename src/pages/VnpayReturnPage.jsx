@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { LoadingOutlined } from '@ant-design/icons';
-import { verifyVnpayReturnApi } from '../util/api';
+import { getMyOrderDetailApi, verifyVnpayReturnApi } from '../util/api';
 import { fetchCart } from '../util/cart';
+
+const ORDER_CONFIRMATION_ATTEMPTS = 5;
+const ORDER_CONFIRMATION_DELAY_MS = 1200;
 
 const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     style: 'currency',
@@ -40,6 +43,39 @@ const formatVnpayDate = (value) => {
     });
 };
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitForOrderPaymentConfirmation = async (orderCode) => {
+    if (!orderCode) return null;
+
+    let latestOrder = null;
+
+    for (let attempt = 0; attempt < ORDER_CONFIRMATION_ATTEMPTS; attempt += 1) {
+        if (attempt > 0) {
+            await wait(ORDER_CONFIRMATION_DELAY_MS);
+        }
+
+        const response = await getMyOrderDetailApi(orderCode);
+        latestOrder = response?.data || null;
+
+        if (latestOrder?.paymentStatus === 'PAID') {
+            return latestOrder;
+        }
+    }
+
+    return latestOrder;
+};
+
+const getSystemPaymentStatusLabel = (result) => {
+    if (result?.order?.paymentStatus === 'PAID') return 'Đã ghi nhận thanh toán';
+    if (result?.order?.paymentStatus === 'FAILED') return 'Thanh toán không thành công';
+    if (result?.order?.paymentStatus === 'REFUND_REQUIRED') return 'Cần xử lý hoàn tiền';
+    if (result?.order?.paymentStatus === 'REFUNDED') return 'Đã hoàn tiền';
+    if (result?.isVerified && result?.isSuccess) return 'Đang chờ hệ thống xác nhận';
+
+    return 'Chưa cập nhật';
+};
+
 const VnpayReturnPage = () => {
     const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(true);
@@ -63,9 +99,24 @@ const VnpayReturnPage = () => {
                     throw response;
                 }
 
-                setResult(response.data);
+                let confirmedOrder = null;
+                let orderConfirmationError = '';
 
-                if (response.data.isSuccess) {
+                if (response.data.isVerified && response.data.isSuccess) {
+                    try {
+                        confirmedOrder = await waitForOrderPaymentConfirmation(response.data.orderCode);
+                    } catch (orderError) {
+                        orderConfirmationError = getErrorMessage(orderError, 'Chưa thể kiểm tra trạng thái đơn hàng.');
+                    }
+                }
+
+                setResult({
+                    ...response.data,
+                    order: confirmedOrder,
+                    orderConfirmationError,
+                });
+
+                if (confirmedOrder?.paymentStatus === 'PAID') {
                     fetchCart().catch(() => {});
                 }
             } catch (err) {
@@ -85,7 +136,10 @@ const VnpayReturnPage = () => {
         };
     }, [params]);
 
-    const isSuccess = Boolean(result?.isVerified && result?.isSuccess);
+    const isVnpaySuccess = Boolean(result?.isVerified && result?.isSuccess);
+    const isPaymentConfirmed = result?.order?.paymentStatus === 'PAID';
+    const isSuccess = isVnpaySuccess && isPaymentConfirmed;
+    const isWaitingForIpn = isVnpaySuccess && !isPaymentConfirmed;
 
     return (
         <div className="flex min-h-screen items-start justify-center bg-slate-100 px-4 py-3 text-slate-900">
@@ -116,19 +170,21 @@ const VnpayReturnPage = () => {
                                 {isSuccess ? '✓' : '!'}
                             </div>
                             <h1 className="mt-3 text-3xl font-extrabold text-slate-900">
-                                {isSuccess ? 'Thanh toán thành công' : 'Thanh toán chưa thành công'}
+                                {isSuccess ? 'Thanh toán thành công' : isWaitingForIpn ? 'Thanh toán đang được xác nhận' : 'Thanh toán chưa thành công'}
                             </h1>
                             <div className="mt-2 flex justify-center">
                                 <p className="max-w-lg text-center text-sm leading-6 text-slate-500">
                                     {isSuccess
-                                        ? 'VNPay đã trả kết quả giao dịch. Đơn hàng sẽ được xử lý theo trạng thái thanh toán trong hệ thống.'
+                                        ? 'VNPay đã xác nhận giao dịch và hệ thống đã cập nhật đơn hàng.'
+                                        : isWaitingForIpn
+                                            ? result?.orderConfirmationError || 'Giao dịch đã được VNPay ghi nhận thành công. Đơn hàng đang chờ hệ thống xác nhận tự động. Nếu trạng thái chưa cập nhật sau vài phút, vui lòng liên hệ hỗ trợ kèm mã đơn hàng.'
                                         : result?.message || 'Giao dịch chưa hoàn tất, vui lòng kiểm tra lại hoặc chọn phương thức khác.'}
                                 </p>
                             </div>
                             <div className="mt-3 flex justify-center">
                                 <div className={`inline-flex items-center gap-2 rounded-full border bg-white px-4 py-1.5 text-sm font-semibold shadow-sm ${isSuccess ? 'border-emerald-100 text-emerald-700' : 'border-amber-100 text-amber-700'}`}>
                                     <span className={`h-2.5 w-2.5 rounded-full ${isSuccess ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                    {isSuccess ? 'Đã ghi nhận thanh toán' : 'Cần kiểm tra lại'}
+                                    {isSuccess ? 'Đã ghi nhận thanh toán' : isWaitingForIpn ? 'Đang đồng bộ thanh toán' : 'Cần kiểm tra lại'}
                                 </div>
                             </div>
                         </header>
@@ -162,6 +218,10 @@ const VnpayReturnPage = () => {
                                     <div className="rounded-lg border border-slate-100 bg-[#f8f9ff] px-3 py-2.5">
                                         <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">Mã phản hồi</p>
                                         <p className="text-base font-bold text-slate-800">{result?.responseCode || 'N/A'} / {result?.transactionStatus || 'N/A'}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-100 bg-[#f8f9ff] px-3 py-2.5 md:col-span-2">
+                                        <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">Trạng thái hệ thống</p>
+                                        <p className="text-base font-bold text-slate-800">{getSystemPaymentStatusLabel(result)}</p>
                                     </div>
                                 </div>
                             </section>

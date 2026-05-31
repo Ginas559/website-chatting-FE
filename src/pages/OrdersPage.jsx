@@ -9,7 +9,7 @@ import {
     SnippetsOutlined,
     UserOutlined,
 } from '@ant-design/icons';
-import { cancelMyOrderApi, getMyOrderDetailApi, getMyOrdersApi } from '../util/api';
+import { cancelMyOrderApi, getMyOrderDetailApi, getMyOrdersApi, repayVnpayOrderApi } from '../util/api';
 
 const STATUS_LABELS = {
     PENDING_PAYMENT: 'Chờ thanh toán',
@@ -77,15 +77,69 @@ const getErrorMessage = (error, fallback) => {
     return error.errMessage || error.message || error.error || fallback;
 };
 
+const isVnpayPaymentSyncing = (order) => {
+    return (
+        order?.paymentMethod === 'VNPAY'
+        && order?.status === 'PENDING_PAYMENT'
+        && order?.paymentStatus === 'UNPAID'
+        && order?.paymentInfo?.returnVerifiedSuccess
+    );
+};
+
+const canRepayVnpayOrder = (order) => {
+    return (
+        order?.paymentMethod === 'VNPAY'
+        && order?.status === 'PENDING_PAYMENT'
+        && order?.paymentStatus === 'UNPAID'
+        && !order?.paymentInfo?.returnVerifiedSuccess
+    );
+};
+
 const getStatusLabel = (status) => STATUS_LABELS[status] || status || 'N/A';
+
+const getOrderStatusLabel = (order) => {
+    if (isVnpayPaymentSyncing(order)) {
+        return 'Đang đồng bộ thanh toán';
+    }
+
+    return getStatusLabel(order?.status);
+};
+
+const getPaymentStatusLabel = (order) => {
+    if (isVnpayPaymentSyncing(order)) {
+        return 'Đang chờ hệ thống xác nhận';
+    }
+
+    const labels = {
+        UNPAID: 'Chưa thanh toán',
+        PAID: 'Đã thanh toán',
+        FAILED: 'Thanh toán thất bại',
+        REFUND_REQUIRED: 'Cần hoàn tiền',
+        REFUNDED: 'Đã hoàn tiền',
+    };
+
+    return labels[order?.paymentStatus] || order?.paymentStatus || 'N/A';
+};
 
 const getTimelineStatusLabel = (status, order) => {
     if (status === 'PENDING_PAYMENT') {
-        if (order?.paymentMethod === 'VNPAY' && order?.paymentStatus === 'UNPAID') {
-            return 'Chờ thanh toán';
+        if (isVnpayPaymentSyncing(order)) {
+            return 'Đang đồng bộ thanh toán';
         }
 
         if (order?.paymentMethod === 'VNPAY') {
+            if (order?.paymentStatus === 'FAILED') {
+                return 'Thanh toán không thành công';
+            }
+
+            if (order?.paymentStatus === 'REFUND_REQUIRED') {
+                return 'Cần xử lý hoàn tiền';
+            }
+
+            if (order?.paymentStatus === 'REFUNDED') {
+                return 'Đã hoàn tiền';
+            }
+
             return 'Thanh toán thành công';
         }
 
@@ -357,6 +411,27 @@ const OrdersPage = () => {
         }
     };
 
+    const repayVnpayOrder = async (order) => {
+        if (!order || mutating) return;
+
+        setMutating(true);
+        setFeedback('');
+
+        try {
+            const response = await repayVnpayOrderApi(order.orderCode || order.id);
+
+            if (response?.errCode !== 0 || !response?.data?.paymentUrl) {
+                throw response;
+            }
+
+            window.location.href = response.data.paymentUrl;
+        } catch (error) {
+            setFeedback(getErrorMessage(error, 'Không thể tạo lại link thanh toán VNPay.'));
+        } finally {
+            setMutating(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
             <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
@@ -496,7 +571,7 @@ const OrdersPage = () => {
                                                 <span className="text-slate-500">Ngày đặt hàng:</span>
                                                 <span className="font-medium">{formatDateTime(order.createdAt)}</span>
                                                 <span className={`ml-auto rounded-md px-2 py-1 text-xs font-medium ${STATUS_STYLES[order.status] || 'bg-slate-100 text-slate-600'}`}>
-                                                    {getStatusLabel(order.status)}
+                                                    {getOrderStatusLabel(order)}
                                                 </span>
                                             </div>
 
@@ -512,13 +587,25 @@ const OrdersPage = () => {
                                                 <div className="shrink-0 text-left sm:text-right">
                                                     <div className="text-sm text-slate-500">Tổng thanh toán</div>
                                                     <div className="text-base font-medium text-red-600">{formatVnd(order.totalAmount)}</div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openDetail(order.orderCode || order.id)}
-                                                        className="mt-2 inline-flex items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
-                                                    >
-                                                        Xem chi tiết
-                                                    </button>
+                                                    <div className="mt-2 flex flex-wrap justify-start gap-2 sm:justify-end">
+                                                        {canRepayVnpayOrder(order) ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => repayVnpayOrder(order)}
+                                                                disabled={mutating}
+                                                                className="inline-flex items-center justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            >
+                                                                Thanh toán lại
+                                                            </button>
+                                                        ) : null}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openDetail(order.orderCode || order.id)}
+                                                            className="inline-flex items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
+                                                        >
+                                                            Xem chi tiết
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -601,7 +688,7 @@ const OrdersPage = () => {
                                                 <span className="text-slate-500">Ngày đặt hàng:</span>
                                                 <span className="font-medium">{formatDateTime(selectedOrder.createdAt)}</span>
                                                 <span className={`rounded-md px-2 py-1 text-xs font-medium ${STATUS_STYLES[selectedOrder.status] || 'bg-slate-100 text-slate-600'}`}>
-                                                    {getStatusLabel(selectedOrder.status)}
+                                                    {getOrderStatusLabel(selectedOrder)}
                                                 </span>
                                             </div>
                                             <div className="mt-5 space-y-4">
@@ -618,6 +705,24 @@ const OrdersPage = () => {
                                                     </div>
                                                 ))}
                                             </div>
+                                            {canRepayVnpayOrder(selectedOrder) ? (
+                                                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-amber-900">Đơn hàng đang chờ thanh toán VNPay</div>
+                                                            <p className="mt-1 text-sm text-amber-800">Bạn có thể tạo lại link thanh toán cho đơn này mà không cần đặt đơn mới.</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => repayVnpayOrder(selectedOrder)}
+                                                            disabled={mutating}
+                                                            className="inline-flex h-11 items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            {mutating ? 'Đang tạo link...' : 'Thanh toán lại'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                         </div>
 
                                         <div className="rounded-xl border border-slate-300 bg-white px-4 py-6">
@@ -672,7 +777,7 @@ const OrdersPage = () => {
                                                 <div className="mt-4 divide-y divide-slate-200 text-sm">
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Số lượng sản phẩm</span><b>{selectedOrder.items?.length || 0}</b></div>
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Phương thức</span><b>{selectedOrder.paymentMethod}</b></div>
-                                                    <div className="flex justify-between py-3"><span className="text-slate-500">Trạng thái</span><b>{selectedOrder.paymentStatus}</b></div>
+                                                    <div className="flex justify-between py-3"><span className="text-slate-500">Trạng thái</span><b>{getPaymentStatusLabel(selectedOrder)}</b></div>
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Tổng số tiền</span><b className="text-red-600">{formatVnd(selectedOrder.totalAmount)}</b></div>
                                                 </div>
                                             </div>
