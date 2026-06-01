@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { LeftOutlined, RightOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
+import { HeartFilled, HeartOutlined, LeftOutlined, LoadingOutlined, RightOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
-import { getHomeArticlesApi, getHomeProductsApi } from '../util/api';
+import useFavorites from '../hooks/useFavorites';
+import { getHomeArticlesApi, getHomeProductsApi, getRecentlyViewedProductsApi } from '../util/api';
 import { fetchCart, getCartCount } from '../util/cart';
+import { getProductId } from '../util/productId';
+import StatusAlert from '../components/common/StatusAlert';
 
 const formatVnd = (value) => {
     return Number(value || 0).toLocaleString('vi-VN', {
@@ -30,7 +33,18 @@ const decodeJwtPayload = (token) => {
     }
 };
 
-const ProductSection = ({ id, code, title, subtitle, products, showSold = false }) => {
+const FavoriteButton = ({ active, loading, onClick }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-base text-rose-500 shadow transition hover:scale-105"
+        aria-label={active ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
+    >
+        {loading ? <LoadingOutlined /> : active ? <HeartFilled /> : <HeartOutlined />}
+    </button>
+);
+
+const ProductSection = ({ id, code, title, subtitle, products, showSold = false, isFavorite, loadingMap, onToggleFavorite }) => {
     return (
         <section id={id} className="mt-10">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -45,6 +59,15 @@ const ProductSection = ({ id, code, title, subtitle, products, showSold = false 
                 {products.map((product) => (
                     <Link key={product.id || product.slug} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-100/60">
                         <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+                            <FavoriteButton
+                                active={isFavorite(product)}
+                                loading={Boolean(loadingMap[getProductId(product)])}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onToggleFavorite(product);
+                                }}
+                            />
                             <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                             {product.discount > 0 ? <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white">-{product.discount}%</span> : null}
                         </div>
@@ -75,6 +98,9 @@ const HorizontalProductSection = ({
     metricLabel,
     metricKey,
     metricTone = 'text-emerald-600',
+    isFavorite,
+    loadingMap,
+    onToggleFavorite,
 }) => {
     const safePage = Math.max(page || 1, 1);
     const safeTotalPages = Math.max(totalPages || 1, 1);
@@ -124,6 +150,15 @@ const HorizontalProductSection = ({
                             className="group overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
                         >
                             <div className="relative aspect-[5/4] overflow-hidden bg-slate-100 md:aspect-[4/3]">
+                                <FavoriteButton
+                                    active={isFavorite(product)}
+                                    loading={Boolean(loadingMap[getProductId(product)])}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        onToggleFavorite(product);
+                                    }}
+                                />
                                 <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                                 {product.discount > 0 ? <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white">-{product.discount}%</span> : null}
                                 <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-700 shadow-sm backdrop-blur">
@@ -197,6 +232,9 @@ const StoreHomePage = () => {
     const [searchValue, setSearchValue] = useState('');
     const [cartCount, setCartCount] = useState(0);
     const [activeSection, setActiveSection] = useState('khuyen-mai');
+    const [recentlyViewed, setRecentlyViewed] = useState([]);
+    const { isFavorite, toggleFavorite, loadingMap } = useFavorites();
+    const [favoriteNotice, setFavoriteNotice] = useState(null);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -257,6 +295,28 @@ const StoreHomePage = () => {
 
         fetchArticles();
     }, []);
+
+    useEffect(() => {
+        let isMounted = true;
+        const loadRecentlyViewed = async () => {
+            if (!isAuthenticated) {
+                if (isMounted) setRecentlyViewed([]);
+                return;
+            }
+            try {
+                const res = await getRecentlyViewedProductsApi();
+                if (isMounted && res?.errCode === 0) {
+                    setRecentlyViewed(Array.isArray(res?.data?.items) ? res.data.items : []);
+                }
+            } catch {
+                if (isMounted) setRecentlyViewed([]);
+            }
+        };
+        loadRecentlyViewed();
+        return () => {
+            isMounted = false;
+        };
+    }, [isAuthenticated]);
 
     useEffect(() => {
         let isMounted = true;
@@ -338,6 +398,18 @@ const StoreHomePage = () => {
         });
     };
 
+    const onToggleFavorite = async (product) => {
+        const result = await toggleFavorite(product, () => navigate('/login'));
+        if (!result?.error) {
+            return;
+        }
+        if (result.error === 'LOGIN_REQUIRED') {
+            return;
+        }
+        setFavoriteNotice({ type: 'error', message: result.error });
+        window.setTimeout(() => setFavoriteNotice(null), 3000);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
             <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
@@ -410,6 +482,11 @@ const StoreHomePage = () => {
             </header>
 
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+                {favoriteNotice ? (
+                    <div className="mb-4">
+                        <StatusAlert type={favoriteNotice.type}>{favoriteNotice.message}</StatusAlert>
+                    </div>
+                ) : null}
                 <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-orange-500 via-red-500 to-rose-500 p-8 text-white shadow-2xl shadow-orange-300/30 md:p-12">
                     <div className="relative z-10 max-w-3xl text-left">
                         <span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">Trang chủ bán sản phẩm công nghệ</span>
@@ -470,6 +547,9 @@ const StoreHomePage = () => {
                             title="Khuyến mãi hot"
                             subtitle="Ưu đãi số lượng có hạn"
                             products={sections.promotion.items || []}
+                            isFavorite={isFavorite}
+                            loadingMap={loadingMap}
+                            onToggleFavorite={onToggleFavorite}
                         />
 
                         <ProductSection
@@ -478,6 +558,9 @@ const StoreHomePage = () => {
                             title="Sản phẩm mới nhất"
                             subtitle="Vừa mở bán tại hệ thống"
                             products={sections.latest.items || []}
+                            isFavorite={isFavorite}
+                            loadingMap={loadingMap}
+                            onToggleFavorite={onToggleFavorite}
                         />
 
                         <HorizontalProductSection
@@ -493,6 +576,9 @@ const StoreHomePage = () => {
                             metricLabel="Đã bán"
                             metricKey="sold"
                             metricTone="text-emerald-600"
+                            isFavorite={isFavorite}
+                            loadingMap={loadingMap}
+                            onToggleFavorite={onToggleFavorite}
                         />
 
                         <HorizontalProductSection
@@ -508,7 +594,22 @@ const StoreHomePage = () => {
                             metricLabel="Lượt xem"
                             metricKey="views"
                             metricTone="text-orange-600"
+                            isFavorite={isFavorite}
+                            loadingMap={loadingMap}
+                            onToggleFavorite={onToggleFavorite}
                         />
+                        {isAuthenticated && recentlyViewed.length ? (
+                            <ProductSection
+                                id="recently-viewed"
+                                code="RECENT"
+                                title="Sản phẩm đã xem"
+                                subtitle="Tiếp tục xem lại các sản phẩm gần đây"
+                                products={recentlyViewed}
+                                isFavorite={isFavorite}
+                                loadingMap={loadingMap}
+                                onToggleFavorite={onToggleFavorite}
+                            />
+                        ) : null}
                     </>
                 ) : null}
 

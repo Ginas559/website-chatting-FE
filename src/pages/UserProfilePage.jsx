@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import { HeartFilled, HeartOutlined, LoadingOutlined } from '@ant-design/icons';
 import { HomeOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
-import { logoutUser } from '../redux/slices/authSlice';
+import { fetchUserProfile, logoutUser } from '../redux/slices/authSlice';
 import { clearProfileFeedback, fetchProfile, resetProfileState, saveProfile } from '../redux/slices/profileSlice';
 import ProfileInput from '../components/profile/ProfileInput';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/profile/ProfileSummaryCard';
+import useFavorites from '../hooks/useFavorites';
+import { getFavoriteProductsApi, getRecentlyViewedProductsApi } from '../util/api';
+import { getProductId } from '../util/productId';
 
 const mapProfileToForm = (profile = {}) => ({
     firstName: '',
@@ -30,6 +34,38 @@ const buildProfilePayload = (values) => {
 
         return payload;
     }, {});
+};
+
+const getStoredAuthUser = () => {
+    try {
+        const raw = localStorage.getItem('authUser');
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
+const mergeProfileWithAccount = (profile = {}, account = {}) => {
+    const rewardCoupons = Array.isArray(account.rewardCoupons)
+        ? account.rewardCoupons
+        : Array.isArray(profile.rewardCoupons)
+            ? profile.rewardCoupons
+            : [];
+
+    return {
+        ...account,
+        ...profile,
+        id: profile.id || account.id || account._id || '',
+        email: profile.email || account.email || '',
+        firstName: profile.firstName || account.firstName || '',
+        lastName: profile.lastName || account.lastName || '',
+        phone: profile.phone || account.phone || account.phoneNumber || '',
+        rewardPoints: Number(account.rewardPoints ?? profile.rewardPoints ?? 0),
+        rewardCoupons,
+        updatedAt: profile.updatedAt || account.updatedAt,
+    };
 };
 
 const decodeJwtPayload = (token) => {
@@ -160,6 +196,9 @@ const UserProfilePage = () => {
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.auth);
     const { data, loading, saving, error, successMessage } = useSelector((state) => state.profile);
+    const { isFavorite, toggleFavorite, loadingMap } = useFavorites();
+    const [favoriteProducts, setFavoriteProducts] = useState([]);
+    const [recentlyViewedProducts, setRecentlyViewedProducts] = useState([]);
 
     const userId = useMemo(() => {
         const storedUserId = localStorage.getItem('userId');
@@ -181,6 +220,7 @@ const UserProfilePage = () => {
         }
 
         dispatch(fetchProfile(userId));
+        dispatch(fetchUserProfile());
     }, [dispatch, userId]);
 
     useEffect(() => {
@@ -189,12 +229,59 @@ const UserProfilePage = () => {
         };
     }, [dispatch]);
 
+    useEffect(() => {
+        let isMounted = true;
+        const loadProductSections = async () => {
+            try {
+                const [favoritesRes, viewedRes] = await Promise.all([
+                    getFavoriteProductsApi(),
+                    getRecentlyViewedProductsApi(),
+                ]);
+                if (!isMounted) return;
+                setFavoriteProducts(Array.isArray(favoritesRes?.data?.items) ? favoritesRes.data.items : []);
+                setRecentlyViewedProducts(Array.isArray(viewedRes?.data?.items) ? viewedRes.data.items : []);
+            } catch {
+                if (!isMounted) return;
+                setFavoriteProducts([]);
+                setRecentlyViewedProducts([]);
+            }
+        };
+
+        loadProductSections();
+        window.addEventListener('favorites:updated', loadProductSections);
+        return () => {
+            isMounted = false;
+            window.removeEventListener('favorites:updated', loadProductSections);
+        };
+    }, []);
+
     const handleLogout = async () => {
         await dispatch(logoutUser());
         navigate('/login');
     };
 
-    const profileData = data || {};
+    const accountUser = useMemo(() => {
+        const stored = getStoredAuthUser();
+        return {
+            ...stored,
+            ...(user || {}),
+            id: user?.id || stored?.id || userId,
+        };
+    }, [user, userId]);
+
+    const profileData = useMemo(
+        () => mergeProfileWithAccount(data || {}, accountUser),
+        [data, accountUser],
+    );
+
+    const onToggleFavorite = async (product) => {
+        const result = await toggleFavorite(product, () => navigate('/login'));
+        if (result?.error) {
+            return;
+        }
+        const refresh = await getFavoriteProductsApi();
+        setFavoriteProducts(Array.isArray(refresh?.data?.items) ? refresh.data.items : []);
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
@@ -259,6 +346,70 @@ const UserProfilePage = () => {
                         onLogout={handleLogout}
                     />
                 </div>
+
+                <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                    <div className="flex items-end justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Favorites</p>
+                            <h2 className="mt-1 text-2xl font-black text-slate-900">Sản phẩm yêu thích</h2>
+                        </div>
+                    </div>
+                    {!favoriteProducts.length ? (
+                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                            Bạn chưa có sản phẩm yêu thích nào.
+                        </div>
+                    ) : (
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {favoriteProducts.map((product) => (
+                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                                    <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                onToggleFavorite(product);
+                                            }}
+                                            className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-base text-rose-500 shadow transition hover:scale-105"
+                                        >
+                                            {loadingMap[getProductId(product)]
+                                                ? <LoadingOutlined />
+                                                : isFavorite(product) ? <HeartFilled /> : <HeartOutlined />}
+                                        </button>
+                                        <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                                    </div>
+                                    <div className="p-4 text-left">
+                                        <div className="text-xs uppercase tracking-wide text-slate-400">{product.category}</div>
+                                        <div className="mt-2 font-bold text-slate-900">{product.name}</div>
+                                        <div className="mt-2 text-orange-600">{Number(product.price || 0).toLocaleString('vi-VN')}đ</div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Recently Viewed</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-900">Sản phẩm đã xem</h2>
+                    {!recentlyViewedProducts.length ? (
+                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                            Chưa có sản phẩm đã xem gần đây.
+                        </div>
+                    ) : (
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {recentlyViewedProducts.map((product) => (
+                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                                    <img src={product.image} alt={product.name} className="aspect-[4/5] w-full object-cover transition duration-300 group-hover:scale-105" />
+                                    <div className="p-4 text-left">
+                                        <div className="text-xs uppercase tracking-wide text-slate-400">{product.category}</div>
+                                        <div className="mt-2 font-bold text-slate-900">{product.name}</div>
+                                        <div className="mt-2 text-orange-600">{Number(product.price || 0).toLocaleString('vi-VN')}đ</div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </section>
             </main>
         </div>
     );

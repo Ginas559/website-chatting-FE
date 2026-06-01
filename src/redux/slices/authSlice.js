@@ -156,7 +156,10 @@ export const fetchUserProfile = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {
             const res = await getUserProfileApi();
-            return res;
+            if (res?.errCode === 0 && res?.user) {
+                return res.user;
+            }
+            return rejectWithValue(res);
         } catch (error) {
             return rejectWithValue(error?.response?.data || error?.data || error);
         }
@@ -197,11 +200,48 @@ const normalizeError = (error, fallback = 'Có lỗi xảy ra, vui lòng thử l
     return fallback;
 };
 
+const getStoredAuthUser = () => {
+    try {
+        const raw = localStorage.getItem('authUser');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
+const persistAuthUser = (user) => {
+    if (!user) {
+        localStorage.removeItem('authUser');
+        return;
+    }
+    localStorage.setItem('authUser', JSON.stringify(user));
+};
+
+const ensureFavoriteIds = (user = {}) => {
+    const existing = Array.isArray(user.favoriteProductIds)
+        ? user.favoriteProductIds
+        : Array.isArray(user.favoriteProducts)
+            ? user.favoriteProducts
+            : [];
+
+    const normalized = [...new Set(existing.map((id) => String(id)).filter(Boolean))];
+    return {
+        ...user,
+        favoriteProducts: normalized,
+        favoriteProductIds: normalized,
+    };
+};
+
+const initialUser = ensureFavoriteIds(getStoredAuthUser() || {});
+
 const authSlice = createSlice({
     name: 'auth',
     initialState: {
         isAuthenticated: !!localStorage.getItem('accessToken'),
-        user: null,
+        user: Object.keys(initialUser).length ? initialUser : null,
         loading: false,
         error: null,
         registerLoading: false,
@@ -250,6 +290,22 @@ const authSlice = createSlice({
             state.forgotPasswordResetSuccess = false;
             localStorage.removeItem('resetPasswordTempToken');
         },
+        setAuthUser: (state, action) => {
+            const nextUser = action.payload ? ensureFavoriteIds(action.payload) : null;
+            state.user = nextUser;
+            persistAuthUser(nextUser);
+        },
+        setFavoriteProductIds: (state, action) => {
+            const ids = [...new Set((action.payload || []).map((id) => String(id)).filter(Boolean))];
+            const baseUser = state.user || getStoredAuthUser() || {};
+            const nextUser = {
+                ...baseUser,
+                favoriteProducts: ids,
+                favoriteProductIds: ids,
+            };
+            state.user = nextUser;
+            persistAuthUser(nextUser);
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -261,7 +317,7 @@ const authSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.loading = false;
                 state.isAuthenticated = true;
-                state.user = action.payload.user;
+                state.user = ensureFavoriteIds(action.payload.user || {});
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.loading = false;
@@ -293,7 +349,7 @@ const authSlice = createSlice({
             .addCase(verifyOtp.fulfilled, (state, action) => {
                 state.registerLoading = false;
                 state.isAuthenticated = true;
-                state.user = action.payload?.user || null;
+                state.user = action.payload?.user ? ensureFavoriteIds(action.payload.user) : null;
                 state.isOtpSent = false;
                 state.registrationEmail = '';
                 state.tempToken = '';
@@ -326,8 +382,10 @@ const authSlice = createSlice({
             })
             .addCase(fetchUserProfile.fulfilled, (state, action) => {
                 state.profileLoading = false;
-                state.user = action.payload?.user || action.payload?.data?.user || null;
+                const nextUser = ensureFavoriteIds(action.payload || {});
+                state.user = nextUser;
                 state.isAuthenticated = true;
+                persistAuthUser(nextUser);
             })
             .addCase(fetchUserProfile.rejected, (state, action) => {
                 state.profileLoading = false;
@@ -339,7 +397,7 @@ const authSlice = createSlice({
             })
             .addCase(fetchAdminProfile.fulfilled, (state, action) => {
                 state.profileLoading = false;
-                state.user = action.payload?.user || action.payload?.data?.user || null;
+                state.user = ensureFavoriteIds(action.payload?.user || action.payload?.data?.user || {});
                 state.isAuthenticated = true;
             })
             .addCase(fetchAdminProfile.rejected, (state, action) => {
@@ -387,5 +445,7 @@ export const {
     resetRegistrationState,
     clearForgotPasswordFeedback,
     resetForgotPasswordState,
+    setAuthUser,
+    setFavoriteProductIds,
 } = authSlice.actions;
 export default authSlice.reducer;
