@@ -16,7 +16,7 @@ const STATUS_LABELS = {
     NEW: 'Chờ xác nhận',
     CONFIRMED: 'Đã xác nhận',
     PREPARING: 'Đang chuẩn bị hàng',
-    SHIPPING: 'Đang vận chuyển',
+    SHIPPING: 'Đang giao hàng',
     DELIVERED: 'Đã nhận hàng',
     CANCELLED: 'Đã hủy',
     CANCEL_REQUESTED: 'Yêu cầu hủy',
@@ -39,7 +39,7 @@ const STATUS_OPTIONS = [
     { value: 'NEW', label: 'Chờ xác nhận' },
     { value: 'CONFIRMED', label: 'Đã xác nhận' },
     { value: 'PREPARING', label: 'Đang chuẩn bị hàng' },
-    { value: 'SHIPPING', label: 'Đang vận chuyển' },
+    { value: 'SHIPPING', label: 'Đang giao hàng' },
     { value: 'DELIVERED', label: 'Đã nhận hàng' },
     { value: 'CANCEL_REQUESTED', label: 'Yêu cầu hủy' },
     { value: 'CANCELLED', label: 'Đã hủy' },
@@ -153,7 +153,60 @@ const getTimelineStatusLabel = (status, order) => {
     return getStatusLabel(status);
 };
 
-const canShowCancelButton = (order) => ['NEW', 'PREPARING'].includes(order?.status);
+const SHOP_UPDATE_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED'];
+
+const SHOP_UPDATE_FALLBACK_NOTES = {
+    CONFIRMED: 'Shop đã xác nhận đơn hàng của bạn',
+    PREPARING: 'Shop đang chuẩn bị hàng cho đơn hàng của bạn',
+    SHIPPING: 'Đơn hàng đã được bàn giao cho đơn vị vận chuyển',
+    DELIVERED: 'Đơn hàng đã được giao thành công',
+};
+
+const shouldShowTimelineNote = (note) => {
+    const normalizedNote = String(note || '').trim();
+
+    if (!normalizedNote) return false;
+
+    return ![
+        'Admin cập nhật trạng thái đơn hàng',
+        'Đơn hàng COD mới được tạo',
+    ].includes(normalizedNote);
+};
+
+const getShopUpdateNote = (entry) => {
+    const normalizedNote = String(entry?.note || '').trim();
+
+    if (shouldShowTimelineNote(normalizedNote)) {
+        return normalizedNote;
+    }
+
+    return SHOP_UPDATE_FALLBACK_NOTES[entry?.status] || 'Shop cập nhật trạng thái đơn hàng';
+};
+
+const getLatestStatusEntry = (order, status) => {
+    const history = Array.isArray(order?.statusHistory) ? order.statusHistory : [];
+
+    return [...history].reverse().find((entry) => entry?.status === status) || null;
+};
+
+const getCancelRequestRejectionEntry = (order) => {
+    const history = Array.isArray(order?.statusHistory) ? order.statusHistory : [];
+    const lastCancelRequestIndex = history.map((entry) => entry?.status).lastIndexOf('CANCEL_REQUESTED');
+
+    if (lastCancelRequestIndex < 0) {
+        return null;
+    }
+
+    return history.slice(lastCancelRequestIndex + 1).find((entry) => entry?.status === 'PREPARING') || null;
+};
+
+const hasRejectedCancelRequest = (order) => Boolean(getCancelRequestRejectionEntry(order));
+
+const canShowCancelButton = (order) => {
+    if (order?.status === 'NEW') return true;
+    if (order?.status === 'PREPARING') return !hasRejectedCancelRequest(order);
+    return false;
+};
 
 const getFirstItem = (order) => Array.isArray(order?.items) && order.items.length ? order.items[0] : null;
 
@@ -229,15 +282,17 @@ const getTimelineEntries = (order) => {
         return {
             status,
             changedAt: historyItem?.changedAt || null,
+            note: historyItem?.note || '',
             reached: Boolean(historyItem) || status === order?.status,
         };
     });
 
-    if (['CANCELLED', 'CANCEL_REQUESTED'].includes(order?.status) || historyMap.CANCELLED || historyMap.CANCEL_REQUESTED) {
+    if (['CANCELLED', 'CANCEL_REQUESTED'].includes(order?.status) || historyMap.CANCELLED) {
         const cancelStatus = historyMap.CANCELLED ? 'CANCELLED' : 'CANCEL_REQUESTED';
         steps.push({
             status: cancelStatus,
             changedAt: historyMap[cancelStatus]?.changedAt || order?.updatedAt || null,
+            note: historyMap[cancelStatus]?.note || '',
             reached: true,
         });
     }
@@ -245,11 +300,23 @@ const getTimelineEntries = (order) => {
     return steps;
 };
 
+const getShopUpdateEntries = (order) => {
+    const history = Array.isArray(order?.statusHistory) ? order.statusHistory : [];
+
+    return history
+        .filter((entry) => SHOP_UPDATE_STATUSES.includes(entry?.status))
+        .map((entry) => ({
+            ...entry,
+            note: getShopUpdateNote(entry),
+        }));
+};
+
 const OrdersPage = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
+    const [summary, setSummary] = useState({ totalPurchasedOrders: 0, totalPurchasedAmount: 0 });
     const [status, setStatus] = useState('');
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -265,7 +332,6 @@ const OrdersPage = () => {
     const totalPages = Math.max(1, pagination.totalPages || 1);
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const memberPhone = user?.phoneNumber || user?.phone || 'Chưa cập nhật';
-    const totalAmountOnPage = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
     const queryParams = useMemo(() => ({
         page: currentPage,
@@ -295,6 +361,7 @@ const OrdersPage = () => {
 
                 setOrders(Array.isArray(response.data.items) ? response.data.items : []);
                 setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
+                setSummary(response.data.summary || { totalPurchasedOrders: 0, totalPurchasedAmount: 0 });
             } catch (error) {
                 if (!isMounted) return;
                 setFeedback(getErrorMessage(error, 'Không thể tải lịch sử đơn hàng.'));
@@ -324,6 +391,7 @@ const OrdersPage = () => {
 
             setOrders(Array.isArray(response.data.items) ? response.data.items : []);
             setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
+            setSummary(response.data.summary || { totalPurchasedOrders: 0, totalPurchasedAmount: 0 });
         } catch (error) {
             setFeedback(getErrorMessage(error, 'Không thể tải lịch sử đơn hàng.'));
         } finally {
@@ -473,12 +541,12 @@ const OrdersPage = () => {
                             </div>
                         </div>
                         <div className="border-l-0 border-red-500 pl-0 lg:border-l-2 lg:pl-6">
-                            <div className="text-3xl font-medium">{pagination.total || 0}</div>
-                            <div className="mt-1 text-sm text-slate-500">Tổng số đơn hàng đã mua</div>
+                            <div className="text-3xl font-medium">{summary.totalPurchasedOrders || 0}</div>
+                            <div className="mt-1 text-sm text-slate-500">Tổng đơn đã mua thành công</div>
                         </div>
                         <div className="border-l-0 border-red-500 pl-0 lg:border-l-2 lg:pl-6">
-                            <div className="text-3xl font-medium">{formatVnd(totalAmountOnPage)}</div>
-                            <div className="mt-1 text-sm text-slate-500">Tổng tiền trong trang hiện tại</div>
+                            <div className="text-3xl font-medium">{formatVnd(summary.totalPurchasedAmount)}</div>
+                            <div className="mt-1 text-sm text-slate-500">Tổng tiền đã mua</div>
                         </div>
                     </div>
                 </section>
@@ -701,6 +769,33 @@ const OrdersPage = () => {
                                                     {getOrderStatusLabel(selectedOrder)}
                                                 </span>
                                             </div>
+                                            {selectedOrder.status === 'CANCEL_REQUESTED' ? (
+                                                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+                                                    <div className="text-sm font-semibold text-amber-900">Yêu cầu hủy đang chờ shop xử lý</div>
+                                                    <p className="mt-1 text-sm leading-6 text-amber-800">
+                                                        Lý do của bạn: {getLatestStatusEntry(selectedOrder, 'CANCEL_REQUESTED')?.note || 'Không nhập lý do'}
+                                                    </p>
+                                                </div>
+                                            ) : null}
+                                            {selectedOrder.status === 'CANCELLED' ? (
+                                                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left">
+                                                    <div className="text-sm font-semibold text-slate-900">Đơn hàng đã hủy</div>
+                                                    <p className="mt-1 text-sm leading-6 text-slate-700">
+                                                        Lý do hủy: {getLatestStatusEntry(selectedOrder, 'CANCELLED')?.note || 'Không rõ lý do'}
+                                                    </p>
+                                                </div>
+                                            ) : null}
+                                            {!['CANCELLED', 'CANCEL_REQUESTED'].includes(selectedOrder.status) && hasRejectedCancelRequest(selectedOrder) ? (
+                                                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-left">
+                                                    <div className="text-sm font-semibold text-rose-900">Shop đã từ chối yêu cầu hủy đơn</div>
+                                                    <p className="mt-1 text-sm leading-6 text-rose-800">
+                                                        Phản hồi từ shop: {getCancelRequestRejectionEntry(selectedOrder)?.note || 'Đơn hàng tiếp tục được chuẩn bị.'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs font-medium text-rose-700">
+                                                        Đơn hàng vẫn tiếp tục được xử lý theo tiến trình hiện tại.
+                                                    </p>
+                                                </div>
+                                            ) : null}
                                             <div className="mt-5 space-y-4">
                                                 {(selectedOrder.items || []).map((item) => (
                                                 <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -779,6 +874,25 @@ const OrdersPage = () => {
                                                     })}
                                                 </div>
                                             </div>
+                                            {getShopUpdateEntries(selectedOrder).length ? (
+                                                <div className="mt-6 border-t border-slate-200 pt-5">
+                                                    <div className="mb-3 text-left text-sm font-semibold text-slate-900">Cập nhật từ shop</div>
+                                                    <div className="space-y-3">
+                                                        {getShopUpdateEntries(selectedOrder).map((entry, index) => (
+                                                            <div key={`${entry.status}-${entry.changedAt}-${index}`} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left sm:grid-cols-[150px_1fr]">
+                                                                <div className="sm:border-r sm:border-slate-200 sm:pr-4">
+                                                                    <div className="text-sm font-semibold text-slate-900">{getTimelineStatusLabel(entry.status, selectedOrder)}</div>
+                                                                    <div className="mt-1 text-xs text-slate-500">{formatDateTime(entry.changedAt)}</div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <div className="text-xs font-semibold uppercase text-slate-500">Ghi chú</div>
+                                                                    <div className="mt-1 break-words text-sm leading-6 text-slate-700">{entry.note}</div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                         </div>
 
                                         <div className="grid gap-3 lg:grid-cols-2">

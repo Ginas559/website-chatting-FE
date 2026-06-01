@@ -36,12 +36,20 @@ const AdminProfilePage = () => {
                 )}
             />
 
-            <Link
-                to="/management/users"
-                className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition-transform hover:-translate-y-0.5 hover:bg-amber-600"
-            >
-                Mở trang quản lý user
-            </Link>
+            <div className="flex flex-wrap justify-center gap-3">
+                <Link
+                    to="/management/users"
+                    className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition-transform hover:-translate-y-0.5 hover:bg-amber-600"
+                >
+                    Mở trang quản lý user
+                </Link>
+                <Link
+                    to="/admin/orders"
+                    className="rounded-xl border border-amber-300 bg-white px-5 py-3 text-sm font-semibold text-amber-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-amber-500"
+                >
+                    Mở trang quản lý đơn
+                </Link>
+            </div>
         </div>
     );
 };

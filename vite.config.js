@@ -23,11 +23,15 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
-      '/admin': {
+      '/admin/profile': {
         target: backendTarget,
         changeOrigin: true,
       },
-      '/moderator': {
+      '/admin/users': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+      '/moderator/profile': {
         target: backendTarget,
         changeOrigin: true,
       },
