@@ -215,6 +215,22 @@ const ProductDetailPage = () => {
             const nextReview = response.data.review;
             const nextReward = response.data.reward;
 
+            if (response.data.user) {
+                try {
+                    const storedAuthUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+                    const mergedAuthUser = {
+                        ...storedAuthUser,
+                        ...response.data.user,
+                        rewardPoints: response.data.user.rewardPoints ?? storedAuthUser.rewardPoints ?? 0,
+                        rewardCoupons: response.data.user.rewardCoupons || storedAuthUser.rewardCoupons || [],
+                    };
+
+                    localStorage.setItem('authUser', JSON.stringify(mergedAuthUser));
+                } catch {
+                    localStorage.setItem('authUser', JSON.stringify(response.data.user));
+                }
+            }
+
             setReviewData((current) => ({
                 ...current,
                 canReview: false,
@@ -590,7 +606,7 @@ const ProductDetailPage = () => {
 
                                         <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                                             {review.reward?.rewardType === 'COUPON'
-                                                ? `Đã nhận mã ${review.reward.couponCode} giảm ${review.reward.discountPercent}% cho lần mua sau`
+                                                ? 'Đã nhận mã giảm giá cho lần mua sau'
                                                 : `Đã nhận ${review.reward?.points || 0} điểm tích lũy`}
                                         </div>
                                     </article>

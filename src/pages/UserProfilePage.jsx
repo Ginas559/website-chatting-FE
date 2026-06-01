@@ -48,6 +48,25 @@ const decodeJwtPayload = (token) => {
     }
 };
 
+const normalizeRewardCoupons = (value) => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.map((coupon) => ({
+        ...coupon,
+        code: coupon?.code || coupon?.couponCode || '',
+    }));
+};
+
+const readStoredAuthUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem('authUser') || '{}');
+    } catch {
+        return {};
+    }
+};
+
 const ProfileEditor = ({
     userId,
     profileData,
@@ -195,6 +214,17 @@ const UserProfilePage = () => {
     };
 
     const profileData = data || {};
+    const authRewardData = {
+        ...(readStoredAuthUser() || {}),
+        ...(user || {}),
+    };
+    const mergedProfileData = {
+        ...profileData,
+        rewardPoints: profileData.rewardPoints ?? authRewardData.rewardPoints ?? 0,
+        rewardCoupons: normalizeRewardCoupons(
+            profileData.rewardCoupons?.length ? profileData.rewardCoupons : authRewardData.rewardCoupons
+        ),
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
@@ -250,7 +280,7 @@ const UserProfilePage = () => {
                     <ProfileEditor
                         key={data?.updatedAt || userId || 'profile-editor'}
                         userId={userId}
-                        profileData={profileData}
+                        profileData={mergedProfileData}
                         loading={loading}
                         saving={saving}
                         error={error}
