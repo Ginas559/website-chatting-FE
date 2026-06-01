@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
-import { SearchOutlined, ShoppingCartOutlined, StarFilled } from '@ant-design/icons';
-import { createProductReviewApi, getProductDetailApi, getProductReviewsApi } from '../util/api';
+import { HeartFilled, HeartOutlined, LoadingOutlined, SearchOutlined, ShoppingCartOutlined, StarFilled } from '@ant-design/icons';
+import { addRecentlyViewedProductApi, createProductReviewApi, getProductDetailApi, getProductReviewsApi } from '../util/api';
 import { logoutUser } from '../redux/slices/authSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, fetchCart, getCartCount } from '../util/cart';
 import StatusAlert from '../components/common/StatusAlert';
+import useFavorites from '../hooks/useFavorites';
+import { getProductId } from '../util/productId';
 
 const formatVnd = (value) => {
     return Number(value || 0).toLocaleString('vi-VN', {
@@ -13,6 +15,18 @@ const formatVnd = (value) => {
         currency: 'VND',
         maximumFractionDigits: 0,
     });
+};
+
+const getRewardNoticeMessage = (reward) => {
+    if (!reward) {
+        return 'Đã lưu đánh giá thành công.';
+    }
+
+    if (reward.rewardType === 'COUPON') {
+        return 'Đã gửi voucher đến bạn. Vào Profile để kiểm tra.';
+    }
+
+    return 'Đã gửi điểm thưởng đến bạn. Vào Profile để kiểm tra.';
 };
 
 const ProductDetailPage = () => {
@@ -40,6 +54,7 @@ const ProductDetailPage = () => {
     const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', content: '' });
     const [reviewSubmitting, setReviewSubmitting] = useState(false);
     const [reviewFeedback, setReviewFeedback] = useState(null);
+    const { isFavorite, toggleFavorite, loadingMap } = useFavorites();
 
     useEffect(() => {
         const load = async () => {
@@ -88,6 +103,13 @@ const ProductDetailPage = () => {
 
         load();
     }, [slug]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !slug) {
+            return;
+        }
+        addRecentlyViewedProductApi(slug).catch(() => {});
+    }, [isAuthenticated, slug]);
 
     useEffect(() => {
         if (!reviewData.myReview) {
@@ -230,9 +252,7 @@ const ProductDetailPage = () => {
 
             setReviewFeedback({
                 type: 'success',
-                message: nextReward?.label
-                    ? `${nextReward.label}${nextReward.rewardType === 'COUPON' ? `, mã ${nextReward.couponCode}` : ''}`
-                    : 'Đã lưu đánh giá thành công',
+                message: getRewardNoticeMessage(nextReward),
             });
 
             const refreshRes = await getProductReviewsApi(slug);
@@ -261,6 +281,17 @@ const ProductDetailPage = () => {
         return Array.from({ length: 5 }, (_, index) => (
             <StarFilled key={index} className={index < value ? 'text-amber-400' : 'text-slate-200'} />
         ));
+    };
+
+    const onToggleFavorite = async (productOrId) => {
+        const result = await toggleFavorite(productOrId, () => navigate('/login'));
+        if (!result?.error) {
+            return;
+        }
+        if (result.error === 'LOGIN_REQUIRED') {
+            return;
+        }
+        showNotice(result.error, 'error');
     };
 
     if (loading) {
@@ -401,10 +432,26 @@ const ProductDetailPage = () => {
 
                         <p className="mt-5 text-base leading-8 text-slate-600">{detail.description}</p>
 
+                        <div className="mt-5 flex flex-wrap items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => onToggleFavorite(detail)}
+                                disabled={Boolean(loadingMap[getProductId(detail)])}
+                                className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${isFavorite(detail) ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                            >
+                                {loadingMap[getProductId(detail)]
+                                    ? <LoadingOutlined />
+                                    : isFavorite(detail) ? <HeartFilled /> : <HeartOutlined />}
+                                {isFavorite(detail) ? 'Đã yêu thích' : 'Yêu thích'}
+                            </button>
+                        </div>
+
                         <div className="mt-6 rounded-3xl border border-orange-100 bg-orange-50 p-4 text-sm text-slate-700">
                             <div className="flex items-center justify-between gap-4">
                                 <div>Hàng tồn: <span className="font-bold">{stockLeft}</span></div>
                                 <div>Đã bán: <span className="font-bold">{Number(detail.sold || 0)}</span></div>
+                                <div>Khách mua: <span className="font-bold">{Number(detail.buyerCount || 0)}</span></div>
+                                <div>Bình luận: <span className="font-bold">{Number(detail.commentCount || 0)}</span></div>
                                 <div>Danh mục: <span className="font-bold">{detail.category}</span></div>
                             </div>
                         </div>
@@ -589,9 +636,7 @@ const ProductDetailPage = () => {
                                         <p className="mt-2 text-sm leading-6 text-slate-600">{review.content}</p>
 
                                         <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                                            {review.reward?.rewardType === 'COUPON'
-                                                ? `Đã nhận mã ${review.reward.couponCode} giảm ${review.reward.discountPercent}% cho lần mua sau`
-                                                : `Đã nhận ${review.reward?.points || 0} điểm tích lũy`}
+                                            {getRewardNoticeMessage(review.reward)}
                                         </div>
                                     </article>
                                 );
@@ -615,11 +660,30 @@ const ProductDetailPage = () => {
                     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
                         {related.map((item) => (
                             <Link key={item.slug} to={`/product/${item.slug}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                                <img src={item.image} alt={item.name} className="aspect-[4/5] w-full object-cover" />
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={async (event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            await onToggleFavorite(item);
+                                        }}
+                                        className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-base text-rose-500 shadow transition hover:scale-105"
+                                        aria-label={isFavorite(item) ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
+                                    >
+                                        {loadingMap[getProductId(item)]
+                                            ? <LoadingOutlined />
+                                            : isFavorite(item) ? <HeartFilled /> : <HeartOutlined />}
+                                    </button>
+                                    <img src={item.image} alt={item.name} className="aspect-[4/5] w-full object-cover" />
+                                </div>
                                 <div className="p-4 text-left">
                                     <div className="text-xs uppercase tracking-wide text-slate-400">{item.category}</div>
                                     <div className="mt-2 font-bold text-slate-900">{item.name}</div>
                                     <div className="mt-2 text-orange-600">{formatVnd(item.price)}</div>
+                                    <div className="mt-2 text-xs text-slate-500">
+                                        {Number(item.buyerCount || 0)} khách mua • {Number(item.commentCount || 0)} bình luận
+                                    </div>
                                 </div>
                             </Link>
                         ))}

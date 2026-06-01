@@ -42,6 +42,22 @@ export const searchProductsApi = (params = {}) => {
     return axios.get('products', { params });
 };
 
+export const getFavoriteProductsApi = () => {
+    return axios.get('products/favorites');
+};
+
+export const toggleFavoriteProductApi = (productId) => {
+    return axios.post(`products/${productId}/favorite`);
+};
+
+export const getRecentlyViewedProductsApi = () => {
+    return axios.get('products/recently-viewed');
+};
+
+export const addRecentlyViewedProductApi = (slug) => {
+    return axios.post(`products/${slug}/viewed`);
+};
+
 export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode }) => {
     return axios.post('orders/checkout', { shippingInfo, paymentMethod, bankCode });
 };

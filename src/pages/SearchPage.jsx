@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { LogoutOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { HeartFilled, HeartOutlined, LoadingOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import { getProductCategoriesApi, searchProductsApi } from '../util/api';
 import { fetchCart, getCartCount } from '../util/cart';
+import useFavorites from '../hooks/useFavorites';
+import { getProductId } from '../util/productId';
+import StatusAlert from '../components/common/StatusAlert';
 
 const priceRanges = [
     { label: '0đ - 2.000.000đ', minPrice: 0, maxPrice: 2000000 },
@@ -56,6 +59,8 @@ const SearchPage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const { isFavorite, toggleFavorite, loadingMap } = useFavorites();
+    const [favoriteNotice, setFavoriteNotice] = useState(null);
 
     const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParamsString]);
 
@@ -272,6 +277,20 @@ const SearchPage = () => {
 
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
 
+    const onToggleFavorite = async (event, product) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const result = await toggleFavorite(product, () => navigate('/login'));
+        if (!result?.error) {
+            return;
+        }
+        if (result.error === 'LOGIN_REQUIRED') {
+            return;
+        }
+        setFavoriteNotice({ type: 'error', message: result.error });
+        window.setTimeout(() => setFavoriteNotice(null), 3000);
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
             <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
@@ -329,6 +348,11 @@ const SearchPage = () => {
             </header>
 
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+                {favoriteNotice ? (
+                    <div className="mb-4">
+                        <StatusAlert type={favoriteNotice.type}>{favoriteNotice.message}</StatusAlert>
+                    </div>
+                ) : null}
                 <div className="mb-6 text-left">
                     <h1 className="text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Kết quả tìm kiếm cho: "{filters.q || 'Tất cả'}"</h1>
                     <p className="mt-2 text-slate-500">
@@ -443,6 +467,16 @@ const SearchPage = () => {
                             {products.map((product) => (
                                 <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
                                     <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+                                        <button
+                                            type="button"
+                                            onClick={(event) => onToggleFavorite(event, product)}
+                                            className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-base text-rose-500 shadow transition hover:scale-105"
+                                            aria-label={isFavorite(product) ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
+                                        >
+                                            {loadingMap[getProductId(product)]
+                                                ? <LoadingOutlined />
+                                                : isFavorite(product) ? <HeartFilled /> : <HeartOutlined />}
+                                        </button>
                                         <img src={product.images?.[0] || product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                                         {product.discount ? <span className="absolute left-3 top-3 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">Mới</span> : null}
                                         {product.discount ? <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white">-{product.discount}%</span> : null}
