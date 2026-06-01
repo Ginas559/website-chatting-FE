@@ -82,6 +82,22 @@ export const cancelMyOrderApi = (orderIdOrCode, reason = '') => {
     return axios.patch(`orders/my/${orderIdOrCode}/cancel`, { reason });
 };
 
+export const getAdminOrdersApi = (params = {}) => {
+    return axios.get('admin/orders', { params });
+};
+
+export const getAdminOrderDetailApi = (orderIdOrCode) => {
+    return axios.get(`admin/orders/${orderIdOrCode}`);
+};
+
+export const updateAdminOrderStatusApi = (orderIdOrCode, status, note = '') => {
+    return axios.patch(`admin/orders/${orderIdOrCode}/status`, { status, note });
+};
+
+export const resolveAdminCancelRequestApi = (orderIdOrCode, action, note = '') => {
+    return axios.patch(`admin/orders/${orderIdOrCode}/cancel-request`, { action, note });
+};
+
 export const getHomeArticlesApi = (limit = 6) => {
     return axios.get(`articles/home?limit=${limit}`);
 };

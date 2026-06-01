@@ -182,3 +182,27 @@
     border-right-color: var(--border);
   }
 }
+
+.admin-orders-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.admin-orders-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.admin-orders-scroll::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 999px;
+}
+
+.admin-orders-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 2px solid #f8fafc;
+  border-radius: 999px;
+}
+
+.admin-orders-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

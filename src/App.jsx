@@ -17,6 +17,7 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import VnpayReturnPage from './pages/VnpayReturnPage';
 import OrdersPage from './pages/OrdersPage';
+import AdminOrdersPage from './pages/AdminOrdersPage';
 
 const getRoleIdFromToken = () => {
   const token = localStorage.getItem('accessToken');
@@ -97,6 +98,15 @@ function App() {
               <AdminManagementPage />
             </ProtectedRoute>
           } 
+        />
+
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute allowedRoles={['R1']}>
+              <AdminOrdersPage />
+            </ProtectedRoute>
+          }
         />
 
         <Route 

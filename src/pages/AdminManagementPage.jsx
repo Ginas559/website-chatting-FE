@@ -221,6 +221,14 @@ const AdminManagementPage = () => {
                         >
                             Về profile
                         </Link>
+                        {isAdmin && (
+                            <Link
+                                to="/admin/orders"
+                                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-500 hover:text-indigo-500"
+                            >
+                                Quản lý đơn
+                            </Link>
+                        )}
                         <button
                             onClick={handleLogout}
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
