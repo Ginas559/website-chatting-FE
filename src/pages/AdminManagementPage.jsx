@@ -6,6 +6,7 @@ import userManagementService from '../services/userManagement.service';
 import StatusAlert from '../components/common/StatusAlert';
 import FormInput from '../components/common/FormInput';
 import SubmitButton from '../components/common/SubmitButton';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const emptyForm = {
     email: '',
@@ -68,6 +69,8 @@ const AdminManagementPage = () => {
     const [success, setSuccess] = useState('');
     const [editingId, setEditingId] = useState('');
     const [form, setForm] = useState(emptyForm);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const isModeratorDraft = !editingId && form.roleId === 'R3';
 
     const loadUsers = async () => {
@@ -182,19 +185,22 @@ const AdminManagementPage = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!isAdmin) return;
-        if (!window.confirm('Xóa người dùng này?')) return;
+    const handleDelete = async () => {
+        if (!isAdmin || !deleteTarget) return;
 
+        setDeleting(true);
         setError('');
         setSuccess('');
 
         try {
-            await userManagementService.deleteUser(id);
+            await userManagementService.deleteUser(deleteTarget.id);
             setSuccess('Xóa người dùng thành công');
+            setDeleteTarget(null);
             await loadUsers();
         } catch (err) {
             setError(normalizeError(err, 'Không thể xóa người dùng'));
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -368,7 +374,7 @@ const AdminManagementPage = () => {
                                                         )}
                                                         {isAdmin && (
                                                             <button
-                                                                onClick={() => handleDelete(item.id)}
+                                                                onClick={() => setDeleteTarget(item)}
                                                                 className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
                                                             >
                                                                 Xóa
@@ -385,6 +391,17 @@ const AdminManagementPage = () => {
                     </section>
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={Boolean(deleteTarget)}
+                title="Xóa người dùng?"
+                message={`Tài khoản ${deleteTarget?.email || ''} sẽ bị xóa khỏi hệ thống. Hành động này không thể hoàn tác.`}
+                confirmLabel="Xóa người dùng"
+                tone="danger"
+                loading={deleting}
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 };
