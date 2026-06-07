@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../redux/slices/authSlice';
 import {
     getAdminOrderDetailApi,
@@ -9,6 +9,26 @@ import {
     updateAdminOrderStatusApi,
 } from '../util/api';
 import StatusAlert from '../components/common/StatusAlert';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationBell from '../components/common/NotificationBell';
+import ToastNotification from '../components/common/ToastNotification';
+
+const getRoleIdFromToken = () => {
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) return '';
+
+    try {
+        const payload = token.split('.')[1];
+        if (!payload) return '';
+
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+        return JSON.parse(window.atob(padded)).roleId || '';
+    } catch {
+        return '';
+    }
+};
 
 const STATUS_LABELS = {
     PENDING_PAYMENT: 'Chờ thanh toán',
@@ -92,6 +112,11 @@ const getLatestStatusEntry = (order, status) => {
 const AdminOrdersPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { user } = useSelector((state) => state.auth);
+    const notificationsProps = useNotifications();
+
+    const currentRoleId = useMemo(() => user?.roleId || getRoleIdFromToken(), [user?.roleId]);
+
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
     const [status, setStatus] = useState('');
@@ -240,13 +265,14 @@ const AdminOrdersPage = () => {
                         <p className="mt-2 text-sm text-slate-500">Admin R1 điều phối trạng thái và xử lý yêu cầu hủy đơn.</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <Link to="/management/users" className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-orange-500 hover:text-orange-600">
                             Quản lý user
                         </Link>
                         <Link to="/admin/profile" className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-orange-500 hover:text-orange-600">
                             Về profile
                         </Link>
+                        {currentRoleId && <NotificationBell {...notificationsProps} />}
                         <button onClick={handleLogout} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700">
                             Đăng xuất
                         </button>
@@ -529,6 +555,7 @@ const AdminOrdersPage = () => {
                     </section>
                 </div>
             </div>
+            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
         </div>
     );
 };

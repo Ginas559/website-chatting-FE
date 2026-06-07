@@ -1,9 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../redux/slices/authSlice';
 import userManagementService from '../services/userManagement.service';
 import StatusAlert from '../components/common/StatusAlert';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationBell from '../components/common/NotificationBell';
+import ToastNotification from '../components/common/ToastNotification';
+
+const getRoleIdFromToken = () => {
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) return '';
+
+    try {
+        const payload = token.split('.')[1];
+        if (!payload) return '';
+
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+        return JSON.parse(window.atob(padded)).roleId || '';
+    } catch {
+        return '';
+    }
+};
 
 const normalizeError = (error, fallback) => {
     if (!error) return fallback;
@@ -18,6 +38,9 @@ const ModeratorUsersPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.auth);
+    const notificationsProps = useNotifications();
+
+    const currentRoleId = useMemo(() => user?.roleId || getRoleIdFromToken(), [user?.roleId]);
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -58,13 +81,14 @@ const ModeratorUsersPage = () => {
                         <p className="mt-2 text-sm text-slate-500">Tài khoản R3 chỉ xem danh sách, không được tạo/sửa/xóa.</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <Link
                             to="/moderator/profile"
                             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-600"
                         >
                             Về profile
                         </Link>
+                        {currentRoleId && <NotificationBell {...notificationsProps} />}
                         <button
                             onClick={handleLogout}
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
@@ -126,6 +150,7 @@ const ModeratorUsersPage = () => {
                     </div>
                 )}
             </div>
+            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
         </div>
     );
 };

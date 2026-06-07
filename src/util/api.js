@@ -131,3 +131,19 @@ export const updateProfileApi = (userId, data, method = 'patch') => {
         baseURL: PROFILE_API_BASE_URL,
     });
 };
+
+export const getMyNotificationsApi = () => {
+    return axios.get('notifications');
+};
+
+export const markAllNotificationsAsReadApi = () => {
+    return axios.patch('notifications/read-all');
+};
+
+export const markNotificationAsReadApi = (id) => {
+    return axios.patch(`notifications/${id}/read`);
+};
+
+export const createAdminArticleApi = (payload) => {
+    return axios.post('admin/articles', payload);
+};

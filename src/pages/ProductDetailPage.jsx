@@ -6,6 +6,9 @@ import { logoutUser } from '../redux/slices/authSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, fetchCart, getCartCount } from '../util/cart';
 import StatusAlert from '../components/common/StatusAlert';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationBell from '../components/common/NotificationBell';
+import ToastNotification from '../components/common/ToastNotification';
 import useFavorites from '../hooks/useFavorites';
 import { getProductId } from '../util/productId';
 
@@ -35,6 +38,7 @@ const ProductDetailPage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const notificationsProps = useNotifications();
     const [loading, setLoading] = useState(true);
     const [detail, setDetail] = useState(null);
     const [related, setRelated] = useState([]);
@@ -346,6 +350,8 @@ const ProductDetailPage = () => {
                             <ShoppingCartOutlined />
                             <span>Giỏ hàng ({cartCount})</span>
                         </Link>
+
+                        {isAuthenticated && <NotificationBell {...notificationsProps} />}
 
                         {isAuthenticated ? (
                             <>
@@ -690,6 +696,7 @@ const ProductDetailPage = () => {
                     </div>
                 </section>
             </main>
+            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
         </div>
     );
 };

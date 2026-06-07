@@ -8,6 +8,9 @@ import { getHomeArticlesApi, getHomeProductsApi, getRecentlyViewedProductsApi } 
 import { fetchCart, getCartCount } from '../util/cart';
 import { getProductId } from '../util/productId';
 import StatusAlert from '../components/common/StatusAlert';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationBell from '../components/common/NotificationBell';
+import ToastNotification from '../components/common/ToastNotification';
 
 const formatVnd = (value) => {
     return Number(value || 0).toLocaleString('vi-VN', {
@@ -215,6 +218,7 @@ const StoreHomePage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const notificationsProps = useNotifications();
     const [sections, setSections] = useState({
         promotion: { items: [], page: 1, totalPages: 1 },
         latest: { items: [], page: 1, totalPages: 1 },
@@ -453,6 +457,8 @@ const StoreHomePage = () => {
                             <span>Giỏ hàng ({cartCount})</span>
                         </Link>
 
+                        {isAuthenticated && <NotificationBell {...notificationsProps} />}
+
                         {!isAuthenticated ? (
                             <>
                                 <Link to="/login" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Đăng nhập</Link>
@@ -621,6 +627,7 @@ const StoreHomePage = () => {
 
                 {!loadingArticles && articles.length ? <ArticleSection articles={articles} id="tin-tuc" /> : null}
             </main>
+            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
         </div>
     );
 };
