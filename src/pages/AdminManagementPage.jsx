@@ -6,6 +6,9 @@ import userManagementService from '../services/userManagement.service';
 import StatusAlert from '../components/common/StatusAlert';
 import FormInput from '../components/common/FormInput';
 import SubmitButton from '../components/common/SubmitButton';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationBell from '../components/common/NotificationBell';
+import ToastNotification from '../components/common/ToastNotification';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const emptyForm = {
@@ -58,6 +61,7 @@ const AdminManagementPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.auth);
+    const notificationsProps = useNotifications();
 
     const currentRoleId = useMemo(() => user?.roleId || getRoleIdFromToken(), [user?.roleId]);
     const isAdmin = currentRoleId === 'R1';
@@ -214,7 +218,7 @@ const AdminManagementPage = () => {
                         <p className="mt-2 text-sm text-slate-500">Dùng cho Admin để tạo, cập nhật và theo dõi tài khoản.</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <button
                             onClick={handleCreateModerator}
                             className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
@@ -235,6 +239,7 @@ const AdminManagementPage = () => {
                                 Quản lý đơn
                             </Link>
                         )}
+                        {currentRoleId && <NotificationBell {...notificationsProps} />}
                         <button
                             onClick={handleLogout}
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
@@ -391,17 +396,21 @@ const AdminManagementPage = () => {
                     </section>
                 </div>
             </div>
+<ToastNotification
+    toastMessage={notificationsProps.toastMessage}
+    setToastMessage={notificationsProps.setToastMessage}
+/>
 
-            <ConfirmDialog
-                open={Boolean(deleteTarget)}
-                title="Xóa người dùng?"
-                message={`Tài khoản ${deleteTarget?.email || ''} sẽ bị xóa khỏi hệ thống. Hành động này không thể hoàn tác.`}
-                confirmLabel="Xóa người dùng"
-                tone="danger"
-                loading={deleting}
-                onCancel={() => setDeleteTarget(null)}
-                onConfirm={handleDelete}
-            />
+<ConfirmDialog
+    open={Boolean(deleteTarget)}
+    title="Xóa người dùng?"
+    message={`Tài khoản ${deleteTarget?.email || ''} sẽ bị xóa khỏi hệ thống. Hành động này không thể hoàn tác.`}
+    confirmLabel="Xóa người dùng"
+    tone="danger"
+    loading={deleting}
+    onCancel={() => setDeleteTarget(null)}
+    onConfirm={handleDelete}
+/>
         </div>
     );
 };

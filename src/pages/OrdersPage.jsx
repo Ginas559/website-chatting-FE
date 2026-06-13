@@ -11,6 +11,9 @@ import {
     UserOutlined,
 } from '@ant-design/icons';
 import { cancelMyOrderApi, getMyOrderDetailApi, getMyOrdersApi, repayVnpayOrderApi } from '../util/api';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationBell from '../components/common/NotificationBell';
+import ToastNotification from '../components/common/ToastNotification';
 
 const STATUS_LABELS = {
     PENDING_PAYMENT: 'Chờ thanh toán',
@@ -315,6 +318,7 @@ const getShopUpdateEntries = (order) => {
 const OrdersPage = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const notificationsProps = useNotifications();
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
     const [summary, setSummary] = useState({ totalPurchasedOrders: 0, totalPurchasedAmount: 0 });
@@ -528,6 +532,8 @@ const OrdersPage = () => {
                             <ShoppingCartOutlined />
                             <span>Giỏ hàng</span>
                         </Link>
+
+                        {isAuthenticated && <NotificationBell {...notificationsProps} />}
                     </div>
                 </div>
             </header>
@@ -974,6 +980,7 @@ const OrdersPage = () => {
                     </div>
                 </div>
             ) : null}
+            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
         </div>
     );
 };
