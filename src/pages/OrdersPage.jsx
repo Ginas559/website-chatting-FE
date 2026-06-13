@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import {
     HomeOutlined,
     LoadingOutlined,
+    ScanOutlined,
     SearchOutlined,
     ShoppingCartOutlined,
     SnippetsOutlined,
@@ -494,7 +495,7 @@ const OrdersPage = () => {
                 throw response;
             }
 
-            window.location.href = response.data.paymentUrl;
+            window.location.assign(response.data.paymentUrl);
         } catch (error) {
             setFeedback(getErrorMessage(error, 'Không thể tạo lại link thanh toán VNPay.'));
         } finally {
@@ -519,6 +520,10 @@ const OrdersPage = () => {
                         </Link>
 
                     <div className="ml-auto flex flex-wrap items-center gap-3">
+                        <Link to="/delivery/verify" className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                            <ScanOutlined className="text-base" />
+                            Quét QR kiện hàng
+                        </Link>
                         <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100">
                             <ShoppingCartOutlined />
                             <span>Giỏ hàng</span>

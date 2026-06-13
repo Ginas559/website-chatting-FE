@@ -24,7 +24,7 @@ instance.interceptors.response.use(
             if (status === 429) {
                 return Promise.reject({ 
                     status: 429, 
-                    message: data.error || "Quá nhiều yêu cầu, thử lại sau 1 giờ" 
+                    message: data.errMessage || data.error || "Quá nhiều yêu cầu, vui lòng thử lại sau"
                 });
             }
 

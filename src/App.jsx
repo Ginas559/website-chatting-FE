@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import StoreHomePage from './pages/StoreHomePage';
@@ -18,6 +19,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import VnpayReturnPage from './pages/VnpayReturnPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+
+const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
 const getRoleIdFromToken = () => {
   const token = localStorage.getItem('accessToken');
@@ -74,6 +77,16 @@ function App() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={isAuthenticated ? <CheckoutPage /> : <Navigate to="/login" />} />
         <Route path="/orders" element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" />} />
+        <Route
+          path="/delivery/verify"
+          element={
+            <ProtectedRoute allowedRoles={['R2']}>
+              <Suspense fallback={<div className="grid min-h-screen place-items-center bg-slate-50 font-semibold text-slate-600">Đang tải trình quét QR...</div>}>
+                <DeliveryVerificationPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
         <Route path="/vnpay-return" element={<VnpayReturnPage />} />
         
         <Route 
