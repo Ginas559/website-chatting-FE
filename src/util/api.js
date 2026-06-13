@@ -82,6 +82,10 @@ export const cancelMyOrderApi = (orderIdOrCode, reason = '') => {
     return axios.patch(`orders/my/${orderIdOrCode}/cancel`, { reason });
 };
 
+export const verifyDeliveryQrApi = (qrContent) => {
+    return axios.post('orders/delivery/verify', { qrContent });
+};
+
 export const getAdminOrdersApi = (params = {}) => {
     return axios.get('admin/orders', { params });
 };
@@ -96,6 +100,14 @@ export const updateAdminOrderStatusApi = (orderIdOrCode, status, note = '') => {
 
 export const resolveAdminCancelRequestApi = (orderIdOrCode, action, note = '') => {
     return axios.patch(`admin/orders/${orderIdOrCode}/cancel-request`, { action, note });
+};
+
+export const createAdminDeliveryQrApi = (orderIdOrCode) => {
+    return axios.post(`admin/orders/${orderIdOrCode}/delivery-qr`);
+};
+
+export const getAdminDeliveryQrApi = (orderIdOrCode) => {
+    return axios.get(`admin/orders/${orderIdOrCode}/delivery-qr`);
 };
 
 export const getHomeArticlesApi = (limit = 6) => {

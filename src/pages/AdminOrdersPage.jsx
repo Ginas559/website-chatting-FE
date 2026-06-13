@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../redux/slices/authSlice';
 import {
+    createAdminDeliveryQrApi,
     getAdminOrderDetailApi,
+    getAdminDeliveryQrApi,
     getAdminOrdersApi,
     resolveAdminCancelRequestApi,
     updateAdminOrderStatusApi,
@@ -12,6 +14,8 @@ import StatusAlert from '../components/common/StatusAlert';
 import { useNotifications } from '../hooks/useNotifications';
 import NotificationBell from '../components/common/NotificationBell';
 import ToastNotification from '../components/common/ToastNotification';
+import DeliveryQrModal from '../components/admin/DeliveryQrModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const getRoleIdFromToken = () => {
     const token = localStorage.getItem('accessToken');
@@ -23,7 +27,11 @@ const getRoleIdFromToken = () => {
         if (!payload) return '';
 
         const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-        const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+        const padded = normalized.padEnd(
+            Math.ceil(normalized.length / 4) * 4,
+            '='
+        );
+
         return JSON.parse(window.atob(padded)).roleId || '';
     } catch {
         return '';
@@ -127,6 +135,9 @@ const AdminOrdersPage = () => {
     const [mutating, setMutating] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [deliveryQr, setDeliveryQr] = useState(null);
+    const [qrLoading, setQrLoading] = useState(false);
+    const [pendingAction, setPendingAction] = useState('');
 
     const currentPage = pagination.page || 1;
     const totalPages = Math.max(1, pagination.totalPages || 1);
@@ -136,7 +147,7 @@ const AdminOrdersPage = () => {
         ...(status ? { status } : {}),
     }), [currentPage, status]);
 
-    const loadOrders = async (params = queryParams) => {
+    const loadOrders = useCallback(async (params = queryParams) => {
         setLoading(true);
         setError('');
 
@@ -153,7 +164,7 @@ const AdminOrdersPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [queryParams]);
 
     useEffect(() => {
         const timerId = window.setTimeout(() => {
@@ -161,7 +172,7 @@ const AdminOrdersPage = () => {
         }, 0);
 
         return () => window.clearTimeout(timerId);
-    }, [queryParams]);
+    }, [loadOrders]);
 
     const openDetail = async (orderIdOrCode) => {
         setDetailLoading(true);
@@ -211,6 +222,7 @@ const AdminOrdersPage = () => {
             setError(normalizeError(err, 'Không thể cập nhật trạng thái đơn hàng'));
         } finally {
             setMutating(false);
+            setPendingAction('');
         }
     };
 
@@ -236,6 +248,46 @@ const AdminOrdersPage = () => {
             setError(normalizeError(err, 'Không thể xử lý yêu cầu hủy đơn'));
         } finally {
             setMutating(false);
+            setPendingAction('');
+        }
+    };
+
+    const openDeliveryQr = async () => {
+        if (!selectedOrder || !['SHIPPING', 'DELIVERED'].includes(selectedOrder.status)) return;
+
+        const orderKey = selectedOrder.orderCode || selectedOrder.id;
+        setQrLoading(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            const hasQr = selectedOrder.deliveryQr?.status && selectedOrder.deliveryQr.status !== 'NOT_CREATED';
+            const res = hasQr
+                ? await getAdminDeliveryQrApi(orderKey)
+                : await createAdminDeliveryQrApi(orderKey);
+
+            if (res?.errCode !== 0 || !res?.data?.qrContent) {
+                throw res;
+            }
+
+            setSelectedOrder((current) => current ? {
+                ...current,
+                deliveryQr: {
+                    status: 'ACTIVE',
+                    generatedAt: res.data.generatedAt,
+                    expiresAt: res.data.expiresAt,
+                    lastVerifiedAt: null,
+                    verificationCount: 0,
+                },
+            } : current);
+            setDeliveryQr(res.data);
+            if (!hasQr) {
+                setSuccess('Đã tạo QR kiểm tra kiện hàng thành công.');
+            }
+        } catch (err) {
+            setError(normalizeError(err, 'Không thể tạo QR kiểm tra kiện hàng'));
+        } finally {
+            setQrLoading(false);
         }
     };
 
@@ -254,6 +306,36 @@ const AdminOrdersPage = () => {
         await dispatch(logoutUser());
         navigate('/login');
     };
+
+    const nextStatus = selectedOrder ? NEXT_STATUS[selectedOrder.status] : '';
+    const deliveryQrStatus = selectedOrder?.deliveryQr?.status || 'NOT_CREATED';
+    const pendingActionConfig = pendingAction === 'STATUS'
+        ? {
+            title: nextStatus === 'DELIVERED' ? 'Xác nhận đã giao hàng?' : 'Cập nhật trạng thái đơn?',
+            message: nextStatus === 'DELIVERED'
+                ? 'Đơn sẽ được ghi nhận đã giao thành công và COD sẽ chuyển sang đã thanh toán.'
+                : `Đơn sẽ chuyển sang trạng thái “${getStatusLabel(nextStatus)}”.`,
+            confirmLabel: nextStatus === 'DELIVERED' ? 'Xác nhận đã giao' : 'Cập nhật trạng thái',
+            tone: nextStatus === 'DELIVERED' ? 'warning' : 'primary',
+            onConfirm: handleStatusChange,
+        }
+        : pendingAction === 'APPROVE_CANCEL'
+            ? {
+                title: 'Chấp nhận hủy đơn?',
+                message: 'Đơn hàng sẽ kết thúc và không thể tiếp tục quy trình giao hàng.',
+                confirmLabel: 'Chấp nhận hủy',
+                tone: 'danger',
+                onConfirm: () => handleCancelRequest('APPROVE'),
+            }
+            : pendingAction === 'REJECT_CANCEL'
+                ? {
+                    title: 'Từ chối yêu cầu hủy?',
+                    message: 'Đơn sẽ quay lại trạng thái chuẩn bị hàng và tiếp tục được xử lý.',
+                    confirmLabel: 'Từ chối yêu cầu',
+                    tone: 'warning',
+                    onConfirm: () => handleCancelRequest('REJECT'),
+                }
+                : null;
 
     return (
         <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff7ed_0%,#f8fafc_38%,#f8fafc_100%)] text-slate-800">
@@ -482,47 +564,93 @@ const AdminOrdersPage = () => {
                                     </div>
                                 </div>
 
-                                <div className="rounded-2xl border border-slate-200 p-4">
+                                <div className="rounded-2xl border border-slate-200 p-4 text-left">
                                     <div className="mb-3 text-sm font-semibold text-slate-900">Sản phẩm</div>
                                     <div className="space-y-3">
                                         {(selectedOrder.items || []).map((item) => (
                                             <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                                                 <div className="flex min-w-0 items-center gap-3">
                                                     <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-12 w-12 shrink-0 rounded-lg object-contain" />
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 text-left">
                                                         <div className="truncate text-sm font-semibold text-slate-800">{item.snapshot?.name}</div>
                                                         <div className="text-xs text-slate-500">SL: {item.quantity}</div>
                                                     </div>
                                                 </div>
-                                                <div className="text-sm font-semibold text-slate-800">{formatVnd(item.lineTotal)}</div>
+                                                <div className="shrink-0 text-right text-sm font-semibold text-slate-800">{formatVnd(item.lineTotal)}</div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="rounded-2xl border border-slate-200 p-4">
-                                    <label className="block text-sm font-semibold text-slate-700">
+                                {['SHIPPING', 'DELIVERED'].includes(selectedOrder.status) ? (
+                                    <div className={`rounded-2xl border p-4 text-left ${deliveryQrStatus === 'EXPIRED' ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50'}`}>
+                                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="min-w-0 text-left">
+                                                <div className={deliveryQrStatus === 'EXPIRED' ? 'font-bold text-amber-950' : 'font-bold text-blue-950'}>QR kiểm tra kiện hàng</div>
+                                                <p className={`mt-1 text-sm leading-6 ${deliveryQrStatus === 'EXPIRED' ? 'text-amber-800' : 'text-blue-800'}`}>
+                                                    QR được dán lên kiện hàng để khách hàng quét khi nhận.
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => void openDeliveryQr()}
+                                                disabled={qrLoading || mutating || deliveryQrStatus === 'LEGACY'}
+                                                className="h-11 shrink-0 rounded-xl bg-blue-700 px-5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {qrLoading
+                                                    ? 'Đang tải QR...'
+                                                    : deliveryQrStatus === 'NOT_CREATED'
+                                                        ? 'Tạo QR'
+                                                        : deliveryQrStatus === 'LEGACY'
+                                                            ? 'QR phiên bản cũ'
+                                                        : deliveryQrStatus === 'EXPIRED'
+                                                            ? 'Xem QR hết hạn'
+                                                            : 'Xem QR'}
+                                            </button>
+                                        </div>
+                                        {deliveryQrStatus === 'ACTIVE' ? (
+                                            <p className="mt-3 text-xs font-medium leading-5 text-blue-700">
+                                                QR hiện tại còn hiệu lực đến {formatDateTime(selectedOrder.deliveryQr?.expiresAt)}.
+                                            </p>
+                                        ) : deliveryQrStatus === 'EXPIRED' ? (
+                                            <p className="mt-3 text-xs font-semibold leading-5 text-amber-800">
+                                                QR đã hết hạn lúc {formatDateTime(selectedOrder.deliveryQr?.expiresAt)} và chỉ còn dùng để đối chiếu lịch sử.
+                                            </p>
+                                        ) : deliveryQrStatus === 'LEGACY' ? (
+                                            <p className="mt-3 text-xs font-semibold leading-5 text-amber-800">
+                                                QR này được tạo trước phiên bản lưu trữ mã hóa nên không thể xem lại. Không thay mã nếu tem đã được gửi đi.
+                                            </p>
+                                        ) : (
+                                            <p className="mt-3 text-xs font-medium leading-5 text-blue-700">
+                                                QR chỉ được tạo một lần và gắn cố định với kiện hàng.
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : null}
+
+                                <div className="rounded-2xl border border-slate-200 p-4 text-left">
+                                    <label className="block text-left text-sm font-semibold text-slate-700">
                                         Ghi chú xử lý
                                         <textarea
                                             value={note}
                                             onChange={(event) => setNote(event.target.value)}
                                             rows={3}
-                                            className="mt-2 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                                            className="mt-2 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-left text-sm outline-none focus:border-orange-500"
                                             placeholder={selectedOrder.status === 'CANCEL_REQUESTED' ? 'Ghi chú phản hồi cho yêu cầu hủy, tối đa 300 ký tự' : 'Không bắt buộc, tối đa 300 ký tự'}
                                         />
                                     </label>
 
                                     {selectedOrder.status === 'CANCEL_REQUESTED' ? (
                                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                            <button type="button" onClick={() => handleCancelRequest('APPROVE')} disabled={mutating} className="h-11 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                            <button type="button" onClick={() => setPendingAction('APPROVE_CANCEL')} disabled={mutating} className="h-11 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">
                                                 Chấp nhận hủy
                                             </button>
-                                            <button type="button" onClick={() => handleCancelRequest('REJECT')} disabled={mutating} className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-orange-400 disabled:cursor-not-allowed disabled:opacity-60">
+                                            <button type="button" onClick={() => setPendingAction('REJECT_CANCEL')} disabled={mutating} className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-orange-400 disabled:cursor-not-allowed disabled:opacity-60">
                                                 Từ chối yêu cầu
                                             </button>
                                         </div>
                                     ) : NEXT_STATUS[selectedOrder.status] ? (
-                                        <button type="button" onClick={handleStatusChange} disabled={mutating} className="mt-4 h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                        <button type="button" onClick={() => setPendingAction('STATUS')} disabled={mutating} className="mt-4 h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
                                             Chuyển sang: {getStatusLabel(NEXT_STATUS[selectedOrder.status])}
                                         </button>
                                     ) : (
@@ -555,7 +683,27 @@ const AdminOrdersPage = () => {
                     </section>
                 </div>
             </div>
-            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
+<ToastNotification
+    toastMessage={notificationsProps.toastMessage}
+    setToastMessage={notificationsProps.setToastMessage}
+/>
+
+<DeliveryQrModal
+    data={deliveryQr}
+    loading={qrLoading}
+    onClose={() => setDeliveryQr(null)}
+/>
+
+<ConfirmDialog
+    open={Boolean(pendingActionConfig)}
+    title={pendingActionConfig?.title}
+    message={pendingActionConfig?.message}
+    confirmLabel={pendingActionConfig?.confirmLabel}
+    tone={pendingActionConfig?.tone}
+    loading={mutating}
+    onCancel={() => setPendingAction('')}
+    onConfirm={pendingActionConfig?.onConfirm}
+/>
         </div>
     );
 };
