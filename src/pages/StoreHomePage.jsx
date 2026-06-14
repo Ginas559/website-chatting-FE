@@ -444,6 +444,10 @@ const StoreHomePage = () => {
                         Tin tức
                     </a>
 
+                    <Link to="/livestream" className="inline-flex items-center rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100">
+                        Livestream
+                    </Link>
+
                     <div className="ml-auto flex flex-wrap items-center gap-3">
                         {isAuthenticated ? (
                             <Link className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100" to="/orders">
@@ -472,12 +476,6 @@ const StoreHomePage = () => {
                                     <p className="text-xs text-slate-500">Vai trò: {member.roleId || 'R2'}</p>
                                 </div>
 
-                                {member.roleId === 'R1' ? (
-                                    <Link to="/management/users" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Quản lý người dùng</Link>
-                                ) : null}
-                                {member.roleId === 'R3' ? (
-                                    <Link to="/moderator/users" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Quản lý kiểm duyệt</Link>
-                                ) : null}
                                 <button onClick={handleLogout} type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
                                     Đăng xuất
                                 </button>
@@ -511,6 +509,9 @@ const StoreHomePage = () => {
                             )}
                             {isAuthenticated ? (
                                 <Link to="/orders" className="rounded-2xl border border-white/35 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20">Xem đơn hàng</Link>
+                            ) : null}
+                            {isAuthenticated ? (
+                                <Link to="/livestream" className="rounded-2xl border border-white/35 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20">Xem livestream</Link>
                             ) : null}
                         </div>
                     </div>

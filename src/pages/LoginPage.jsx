@@ -1,20 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser, clearError } from '../redux/slices/authSlice';
+import { loginUser, clearError, logoutUser } from '../redux/slices/authSlice';
 import AuthShell from '../components/common/AuthShell';
 import FormInput from '../components/common/FormInput';
 import SubmitButton from '../components/common/SubmitButton';
 import StatusAlert from '../components/common/StatusAlert';
+
+const getFeedbackMessage = (payload, fallback = 'Đăng nhập thất bại') => {
+    if (!payload) return fallback;
+    if (typeof payload === 'string') return payload;
+    if (payload?.errors?.length > 0) return payload.errors[0].msg;
+    if (payload?.error) return payload.error;
+    if (payload?.message) return payload.message;
+    if (payload?.errMessage) return payload.errMessage;
+    return fallback;
+};
+
 const LoginPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { loading, error, user } = useSelector((state) => state.auth);
+    const { loading, user } = useSelector((state) => state.auth);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
+    const [feedbackMsg, setFeedbackMsg] = useState('');
 
     useEffect(() => {
         dispatch(clearError());
@@ -24,23 +36,27 @@ const LoginPage = () => {
         e.preventDefault();
         dispatch(clearError());
         setSuccessMsg('');
+        setFeedbackMsg('');
 
         const result = await dispatch(loginUser({ email, password }));
 
         if (loginUser.fulfilled.match(result)) {
+            const roleId = (result.payload?.user || user)?.roleId;
+
+            if (roleId !== 'R2') {
+                await dispatch(logoutUser());
+                setFeedbackMsg('Tài khoản nhân sự vui lòng đăng nhập tại Staff Portal');
+                return;
+            }
+
             setSuccessMsg('Đăng nhập thành công! Đang chuyển hướng...');
             setTimeout(() => {
-                const roleId = (result.payload?.user || user)?.roleId;
-
-                if (roleId === 'R1') {
-                    navigate('/management/users');
-                } else if (roleId === 'R3') {
-                    navigate('/moderator/users');
-                } else {
-                    navigate('/');
-                }
+                navigate('/');
             }, 800);
+            return;
         }
+
+        setFeedbackMsg(getFeedbackMessage(result.payload));
     };
 
     return (
@@ -69,7 +85,7 @@ const LoginPage = () => {
                 </>
             )}
         >
-            {error && <StatusAlert>{error}</StatusAlert>}
+            {feedbackMsg && <StatusAlert>{feedbackMsg}</StatusAlert>}
             {successMsg && <StatusAlert type="success">{successMsg}</StatusAlert>}
 
             <form onSubmit={handleSubmit} autoComplete="on" className="space-y-5">

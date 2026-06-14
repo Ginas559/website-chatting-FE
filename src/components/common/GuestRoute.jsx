@@ -8,12 +8,8 @@ const GuestRoute = ({ children }) => {
         return children;
     }
 
-    if (user?.roleId === 'R1') {
-        return <Navigate to="/admin/profile" />;
-    }
-
-    if (user?.roleId === 'R3') {
-        return <Navigate to="/moderator/profile" />;
+    if (user?.roleId !== 'R2') {
+        return children;
     }
 
     return <Navigate to="/" />;

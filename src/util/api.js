@@ -14,6 +14,10 @@ export const logoutApi = (refreshToken) => {
     return axios.post('logout', { refreshToken });
 };
 
+export const changePasswordApi = ({ currentPassword, newPassword }) => {
+    return axios.patch('me/password', { currentPassword, newPassword });
+};
+
 export const getHomeProductsApi = (limit = 8) => {
     if (typeof limit === 'object' && limit !== null) {
         return axios.get('products/home', { params: limit });
@@ -82,34 +86,6 @@ export const cancelMyOrderApi = (orderIdOrCode, reason = '') => {
     return axios.patch(`orders/my/${orderIdOrCode}/cancel`, { reason });
 };
 
-export const verifyDeliveryQrApi = (qrContent) => {
-    return axios.post('orders/delivery/verify', { qrContent });
-};
-
-export const getAdminOrdersApi = (params = {}) => {
-    return axios.get('admin/orders', { params });
-};
-
-export const getAdminOrderDetailApi = (orderIdOrCode) => {
-    return axios.get(`admin/orders/${orderIdOrCode}`);
-};
-
-export const updateAdminOrderStatusApi = (orderIdOrCode, status, note = '') => {
-    return axios.patch(`admin/orders/${orderIdOrCode}/status`, { status, note });
-};
-
-export const resolveAdminCancelRequestApi = (orderIdOrCode, action, note = '') => {
-    return axios.patch(`admin/orders/${orderIdOrCode}/cancel-request`, { action, note });
-};
-
-export const createAdminDeliveryQrApi = (orderIdOrCode) => {
-    return axios.post(`admin/orders/${orderIdOrCode}/delivery-qr`);
-};
-
-export const getAdminDeliveryQrApi = (orderIdOrCode) => {
-    return axios.get(`admin/orders/${orderIdOrCode}/delivery-qr`);
-};
-
 export const getHomeArticlesApi = (limit = 6) => {
     return axios.get(`articles/home?limit=${limit}`);
 };
@@ -120,14 +96,6 @@ export const getArticleDetailApi = (slug) => {
 
 export const getUserProfileApi = () => {
     return axios.get('/user/profile', { baseURL: '' });
-};
-
-export const getAdminProfileApi = () => {
-    return axios.get('/admin/profile', { baseURL: '' });
-};
-
-export const getModeratorProfileApi = () => {
-    return axios.get('/moderator/profile', { baseURL: '' });
 };
 
 export const getProfileByIdApi = (userId) => {
@@ -154,8 +122,4 @@ export const markAllNotificationsAsReadApi = () => {
 
 export const markNotificationAsReadApi = (id) => {
     return axios.patch(`notifications/${id}/read`);
-};
-
-export const createAdminArticleApi = (payload) => {
-    return axios.post('admin/articles', payload);
 };
