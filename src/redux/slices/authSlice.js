@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getAdminProfileApi, getModeratorProfileApi, getUserProfileApi, loginApi, logoutApi, refreshTokenApi } from '../../util/api';
+import { getUserProfileApi, loginApi, logoutApi, refreshTokenApi } from '../../util/api';
 import authService from '../../services/auth.service';
 import forgotPasswordService from '../../services/forgotPassword.service';
 import { resetCartCache } from '../../util/cart';
@@ -160,30 +160,6 @@ export const fetchUserProfile = createAsyncThunk(
                 return res.user;
             }
             return rejectWithValue(res);
-        } catch (error) {
-            return rejectWithValue(error?.response?.data || error?.data || error);
-        }
-    }
-);
-
-export const fetchAdminProfile = createAsyncThunk(
-    'auth/fetchAdminProfile',
-    async (_, { rejectWithValue }) => {
-        try {
-            const res = await getAdminProfileApi();
-            return res;
-        } catch (error) {
-            return rejectWithValue(error?.response?.data || error?.data || error);
-        }
-    }
-);
-
-export const fetchModeratorProfile = createAsyncThunk(
-    'auth/fetchModeratorProfile',
-    async (_, { rejectWithValue }) => {
-        try {
-            const res = await getModeratorProfileApi();
-            return res;
         } catch (error) {
             return rejectWithValue(error?.response?.data || error?.data || error);
         }
@@ -390,19 +366,6 @@ const authSlice = createSlice({
             .addCase(fetchUserProfile.rejected, (state, action) => {
                 state.profileLoading = false;
                 state.profileError = normalizeError(action.payload, 'Không thể tải thông tin người dùng');
-            })
-            .addCase(fetchAdminProfile.pending, (state) => {
-                state.profileLoading = true;
-                state.profileError = null;
-            })
-            .addCase(fetchAdminProfile.fulfilled, (state, action) => {
-                state.profileLoading = false;
-                state.user = ensureFavoriteIds(action.payload?.user || action.payload?.data?.user || {});
-                state.isAuthenticated = true;
-            })
-            .addCase(fetchAdminProfile.rejected, (state, action) => {
-                state.profileLoading = false;
-                state.profileError = normalizeError(action.payload, 'Không thể tải thông tin quản trị viên');
             })
             // Forgot password
             .addCase(sendForgotPasswordOtp.pending, (state) => {

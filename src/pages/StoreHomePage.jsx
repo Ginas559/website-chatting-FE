@@ -472,12 +472,6 @@ const StoreHomePage = () => {
                                     <p className="text-xs text-slate-500">Vai trò: {member.roleId || 'R2'}</p>
                                 </div>
 
-                                {member.roleId === 'R1' ? (
-                                    <Link to="/management/users" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Quản lý người dùng</Link>
-                                ) : null}
-                                {member.roleId === 'R3' ? (
-                                    <Link to="/moderator/users" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Quản lý kiểm duyệt</Link>
-                                ) : null}
                                 <button onClick={handleLogout} type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
                                     Đăng xuất
                                 </button>

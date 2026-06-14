@@ -16,7 +16,7 @@ import {
 const RegisterPage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const { registerLoading, registerError, registerMessage, isOtpSent, user } = useSelector((state) => state.auth);
+    const { registerLoading, registerError, registerMessage, isOtpSent } = useSelector((state) => state.auth);
 
     const [countdown, setCountdown] = useState(300);
     const [formData, setFormData] = useState({
@@ -99,8 +99,7 @@ const RegisterPage = () => {
         const result = await dispatch(verifyOtp({ otp: formData.otpCode }));
 
         if (verifyOtp.fulfilled.match(result)) {
-            const roleId = result.payload?.user?.roleId || user?.roleId;
-            navigate(roleId === 'R1' ? '/admin/profile' : '/user/profile');
+            navigate('/user/profile');
             return;
         }
 
