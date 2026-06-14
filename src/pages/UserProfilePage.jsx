@@ -9,7 +9,7 @@ import ProfileInput from '../components/profile/ProfileInput';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/profile/ProfileSummaryCard';
 import useFavorites from '../hooks/useFavorites';
-import { getFavoriteProductsApi, getRecentlyViewedProductsApi } from '../util/api';
+import { changePasswordApi, getFavoriteProductsApi, getRecentlyViewedProductsApi } from '../util/api';
 import { getProductId } from '../util/productId';
 
 const mapProfileToForm = (profile = {}) => ({
@@ -191,6 +191,71 @@ const ProfileEditor = ({
     );
 };
 
+const normalizePasswordError = (error) => {
+    if (!error) return 'Không thể đổi mật khẩu';
+    if (typeof error === 'string') return error;
+    if (error?.errors?.length) return error.errors[0].msg;
+    if (error?.errMessage) return error.errMessage;
+    if (error?.error) return error.error;
+    if (error?.message) return error.message;
+    return 'Không thể đổi mật khẩu';
+};
+
+const ChangePasswordSection = () => {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setError('');
+        setSuccess('');
+
+        if (newPassword !== confirmPassword) {
+            setError('Xác nhận mật khẩu không khớp');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await changePasswordApi({ currentPassword, newPassword });
+            setSuccess(res?.errMessage || 'Đổi mật khẩu thành công');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (err) {
+            setError(normalizePasswordError(err));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Security</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-900">Đổi mật khẩu</h2>
+            <p className="mt-2 text-sm text-slate-500">Nhập mật khẩu hiện tại để cập nhật mật khẩu mới.</p>
+            {error && <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
+            {success && <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{success}</div>}
+            <div className="mt-5 grid gap-5 md:grid-cols-3">
+                <ProfileInput label="Mật khẩu hiện tại" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
+                <ProfileInput label="Mật khẩu mới" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required />
+                <ProfileInput label="Nhập lại mật khẩu mới" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+            </div>
+            <button
+                type="submit"
+                disabled={loading}
+                className="mt-5 inline-flex rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60"
+            >
+                {loading ? 'Đang đổi...' : 'Đổi mật khẩu'}
+            </button>
+        </form>
+    );
+};
+
 const UserProfilePage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -346,6 +411,10 @@ const UserProfilePage = () => {
                         onLogout={handleLogout}
                     />
                 </div>
+
+                <section className="mt-8">
+                    <ChangePasswordSection />
+                </section>
 
                 <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
                     <div className="flex items-end justify-between gap-3">

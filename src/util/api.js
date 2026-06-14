@@ -14,6 +14,10 @@ export const logoutApi = (refreshToken) => {
     return axios.post('logout', { refreshToken });
 };
 
+export const changePasswordApi = ({ currentPassword, newPassword }) => {
+    return axios.patch('me/password', { currentPassword, newPassword });
+};
+
 export const getHomeProductsApi = (limit = 8) => {
     if (typeof limit === 'object' && limit !== null) {
         return axios.get('products/home', { params: limit });
