@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
-import { checkoutOrderApi } from '../util/api';
+import { checkoutOrderApi, getMyVouchersApi, previewCheckoutApi } from '../util/api';
+import { Popconfirm, message } from 'antd';
 import { fetchCart, getCartSnapshot, resetCartCache } from '../util/cart';
 
 const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
@@ -71,6 +72,13 @@ const CheckoutPage = () => {
     const [createdOrder, setCreatedOrder] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('COD');
 
+    // Tien - Các trạng thái quản lý khuyến mãi & ưu đãi
+    const [vouchers, setVouchers] = useState([]);
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState('');
+    const [usePoints, setUsePoints] = useState(false);
+    const [previewResult, setPreviewResult] = useState(null);
+
     const items = Array.isArray(cart.items) ? cart.items : [];
     const subtotal = useMemo(() => Number(cart.subtotal || 0), [cart.subtotal]);
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
@@ -109,6 +117,101 @@ const CheckoutPage = () => {
             isMounted = false;
         };
     }, [isAuthenticated, navigate]);
+
+    // Tien - Tải danh sách voucher khả dụng của thành viên
+    useEffect(() => {
+        const loadVouchers = async () => {
+            try {
+                const res = await getMyVouchersApi();
+                setVouchers(res?.data || []);
+            } catch (err) {
+                console.error('Không thể lấy danh sách voucher khả dụng:', err);
+            }
+        };
+        if (isAuthenticated) {
+            void loadVouchers();
+        }
+    }, [isAuthenticated]);
+
+    // Tien - Hàm xem trước tính toán giá trị đơn hàng
+    const triggerPreview = async (code, points) => {
+        try {
+            const previewShipping = {
+                fullName: form.fullName.trim().length >= 2 ? form.fullName.trim() : 'Khách hàng',
+                phone: /^[0-9+\-\s()]{8,20}$/.test(form.phone.trim()) ? form.phone.trim() : '0900000000',
+                address: form.address.trim().length >= 8 ? form.address.trim() : '123 Địa chỉ mặc định',
+                city: form.city.trim() || 'Hồ Chí Minh',
+                note: form.note.trim(),
+            };
+            const res = await previewCheckoutApi({
+                shippingInfo: previewShipping,
+                couponCode: code,
+                usePoints: points,
+            });
+            if (res?.errCode === 0 && res?.data) {
+                setPreviewResult(res.data);
+            }
+        } catch (err) {
+            console.error('Lỗi tính toán xem trước đơn hàng:', err);
+            const errMsg = getErrorMessage(err, 'Không thể tính toán đơn hàng.');
+            message.error(errMsg);
+        }
+    };
+
+    // Tien - Thay đổi việc dùng điểm tích lũy
+    const handleTogglePoints = (e) => {
+        const checked = e.target.checked;
+        setUsePoints(checked);
+        setFeedback('');
+        void triggerPreview(appliedCoupon, checked);
+    };
+
+
+
+    // Tien - Áp dụng mã giảm giá có kiểm tra và bật popup lỗi nếu không thỏa điều kiện
+    const handleApplyCoupon = async (code) => {
+        const cleanCode = String(code || '').trim().toUpperCase();
+        if (!cleanCode) return;
+
+        setLoading(true);
+        try {
+            const previewShipping = {
+                fullName: form.fullName.trim().length >= 2 ? form.fullName.trim() : 'Khách hàng',
+                phone: /^[0-9+\-\s()]{8,20}$/.test(form.phone.trim()) ? form.phone.trim() : '0900000000',
+                address: form.address.trim().length >= 8 ? form.address.trim() : '123 Địa chỉ mặc định',
+                city: form.city.trim() || 'Hồ Chí Minh',
+                note: form.note.trim(),
+            };
+            const res = await previewCheckoutApi({
+                shippingInfo: previewShipping,
+                couponCode: cleanCode,
+                usePoints: usePoints,
+            });
+            if (res?.errCode === 0 && res?.data) {
+                setPreviewResult(res.data);
+                setAppliedCoupon(cleanCode);
+                setFeedback('');
+                message.success(`Đã áp dụng mã giảm giá ${cleanCode}`);
+            }
+        } catch (err) {
+            console.error('Lỗi khi áp dụng mã giảm giá:', err);
+            const errMsg = getErrorMessage(err, 'Mã giảm giá không hợp lệ hoặc chưa đủ điều kiện áp dụng.');
+            message.error(errMsg);
+            // Reset trạng thái nếu áp dụng thất bại
+            setAppliedCoupon('');
+            setCouponCode('');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Tien - Hủy áp dụng mã giảm giá
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon('');
+        setCouponCode('');
+        setFeedback('');
+        void triggerPreview('', usePoints);
+    };
 
     const onLogout = async () => {
         await dispatch(logoutUser());
@@ -153,6 +256,8 @@ const CheckoutPage = () => {
         try {
             const response = await checkoutOrderApi({
                 paymentMethod,
+                couponCode: appliedCoupon,
+                usePoints,
                 shippingInfo: {
                     fullName: form.fullName.trim(),
                     phone: form.phone.trim(),
@@ -344,6 +449,96 @@ const CheckoutPage = () => {
                                 </span>
                             </label>
                         </div>
+
+                        {/* Tien - Nhập mã giảm giá và dùng điểm tích lũy */}
+                        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Khuyến mãi & Ưu đãi</h3>
+                                <p className="text-xs text-slate-500 mt-1">Chọn hoặc nhập mã giảm giá, sử dụng điểm tích lũy thành viên.</p>
+                            </div>
+
+                            {/* Dùng điểm tích lũy */}
+                            <div className="border-t border-slate-100 pt-4">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={usePoints}
+                                        onChange={handleTogglePoints}
+                                        disabled={!user?.rewardPoints || user.rewardPoints <= 0}
+                                        className="h-5 w-5 rounded accent-red-600 cursor-pointer disabled:cursor-not-allowed"
+                                    />
+                                    <div>
+                                        <span className="block font-bold text-slate-900 text-sm">
+                                            Dùng điểm tích lũy ({user?.rewardPoints || 0} điểm)
+                                        </span>
+                                        <span className="block text-xs text-slate-500 mt-0.5">
+                                            Quy đổi: -{formatVnd((user?.rewardPoints || 0) * 1000)} (1 điểm = 1,000đ)
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {/* Mã giảm giá */}
+                            <div className="border-t border-slate-100 pt-4 space-y-3">
+                                <span className="block font-bold text-slate-900 text-sm">Mã giảm giá (Voucher)</span>
+                                
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value)}
+                                        placeholder="Nhập mã giảm giá..."
+                                        disabled={!!appliedCoupon}
+                                        className="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none uppercase font-mono disabled:bg-slate-100 disabled:text-slate-500"
+                                    />
+                                    {appliedCoupon ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveCoupon}
+                                            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100"
+                                        >
+                                            Hủy áp dụng
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleApplyCoupon(couponCode)}
+                                            disabled={!couponCode}
+                                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                                        >
+                                            Áp dụng
+                                        </button>
+                                    )}
+                                </div>
+
+                                {appliedCoupon && (
+                                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-800 flex items-center justify-between">
+                                        <span>Đã áp dụng mã: <span className="font-mono">{appliedCoupon}</span></span>
+                                        <span>-{formatVnd(previewResult?.couponDiscount || 0)}</span>
+                                    </div>
+                                )}
+
+                                {/* Danh sách voucher có sẵn */}
+                                {vouchers.length > 0 && (
+                                    <div className="mt-3">
+                                        <span className="block text-xs text-slate-500 mb-2 font-semibold">Voucher khả dụng của bạn:</span>
+                                        <div className="grid gap-2 sm:grid-cols-2 max-h-40 overflow-y-auto pr-1">
+                                            {vouchers.map((v) => (
+                                                <div 
+                                                    key={v._id} 
+                                                    onClick={() => !appliedCoupon && handleApplyCoupon(v.code)}
+                                                    className={`border rounded-xl p-3 text-left transition cursor-pointer select-none ${appliedCoupon === v.code ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:border-red-500 bg-slate-50/50'}`}
+                                                >
+                                                    <div className="font-mono font-bold text-xs text-slate-900">{v.code}</div>
+                                                    <div className="text-[10px] text-slate-500 mt-1 line-clamp-1">{v.description}</div>
+                                                    <div className="text-[10px] text-red-600 font-bold mt-1">Đơn tối thiểu: {formatVnd(v.minOrderAmount)}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </form>
 
                     <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 text-left shadow-sm">
@@ -373,13 +568,27 @@ const CheckoutPage = () => {
                                         <span>Tạm tính</span>
                                         <span>{formatVnd(subtotal)}</span>
                                     </div>
+                                    {previewResult?.couponDiscount > 0 && (
+                                        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+                                            <span>Giảm giá voucher ({appliedCoupon})</span>
+                                            <span className="text-emerald-600">-{formatVnd(previewResult.couponDiscount)}</span>
+                                        </div>
+                                    )}
+                                    {previewResult?.pointsDiscount > 0 && (
+                                        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+                                            <span>Giảm giá điểm tích lũy</span>
+                                            <span className="text-emerald-600">-{formatVnd(previewResult.pointsDiscount)}</span>
+                                        </div>
+                                    )}
                                     <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
                                         <span>Phí vận chuyển</span>
                                         <span>{formatVnd(0)}</span>
                                     </div>
                                     <div className="mt-4 flex items-center justify-between text-base font-black text-slate-900">
                                         <span>Tổng thanh toán</span>
-                                        <span className="text-red-600">{formatVnd(subtotal)}</span>
+                                        <span className="text-red-600">
+                                            {formatVnd(previewResult?.totalAmount !== undefined ? previewResult.totalAmount : subtotal)}
+                                        </span>
                                     </div>
                                 </div>
 
