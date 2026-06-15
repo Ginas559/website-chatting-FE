@@ -21,6 +21,7 @@ const STATUS_LABELS = {
     PREPARING: 'Đang chuẩn bị hàng',
     SHIPPING: 'Đang giao hàng',
     DELIVERED: 'Đã nhận hàng',
+    DELIVERY_FAILED: 'Giao thất bại',
     CANCELLED: 'Đã hủy',
     CANCEL_REQUESTED: 'Yêu cầu hủy',
 };
@@ -32,6 +33,7 @@ const STATUS_STYLES = {
     PREPARING: 'bg-orange-50 text-orange-700',
     SHIPPING: 'bg-blue-50 text-blue-700',
     DELIVERED: 'bg-emerald-50 text-emerald-700',
+    DELIVERY_FAILED: 'bg-red-50 text-red-700',
     CANCELLED: 'bg-slate-100 text-slate-600',
     CANCEL_REQUESTED: 'bg-rose-50 text-rose-700',
 };
@@ -44,6 +46,7 @@ const STATUS_OPTIONS = [
     { value: 'PREPARING', label: 'Đang chuẩn bị hàng' },
     { value: 'SHIPPING', label: 'Đang giao hàng' },
     { value: 'DELIVERED', label: 'Đã nhận hàng' },
+    { value: 'DELIVERY_FAILED', label: 'Giao thất bại' },
     { value: 'CANCEL_REQUESTED', label: 'Yêu cầu hủy' },
     { value: 'CANCELLED', label: 'Đã hủy' },
 ];
@@ -156,13 +159,14 @@ const getTimelineStatusLabel = (status, order) => {
     return getStatusLabel(status);
 };
 
-const SHOP_UPDATE_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED'];
+const SHOP_UPDATE_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'DELIVERY_FAILED'];
 
 const SHOP_UPDATE_FALLBACK_NOTES = {
     CONFIRMED: 'Shop đã xác nhận đơn hàng của bạn',
     PREPARING: 'Shop đang chuẩn bị hàng cho đơn hàng của bạn',
     SHIPPING: 'Đơn hàng đã được bàn giao cho đơn vị vận chuyển',
     DELIVERED: 'Đơn hàng đã được giao thành công',
+    DELIVERY_FAILED: 'Đơn hàng giao thất bại',
 };
 
 const shouldShowTimelineNote = (note) => {
@@ -217,7 +221,7 @@ const canReviewOrder = (order) => order?.status === 'DELIVERED';
 
 const ORDER_TIMELINE = ['NEW', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED'];
 
-const isCancelStatus = (status) => ['CANCELLED', 'CANCEL_REQUESTED'].includes(status);
+const isCancelStatus = (status) => ['CANCELLED', 'CANCEL_REQUESTED', 'DELIVERY_FAILED'].includes(status);
 
 const getTimelinePointTone = ({ entry, isCurrent }) => {
     if (entry.status === 'CANCELLED') {
@@ -232,6 +236,14 @@ const getTimelinePointTone = ({ entry, isCurrent }) => {
         return {
             pointClass: 'border-amber-100 bg-amber-500 text-white shadow-amber-200',
             labelClass: 'font-semibold text-amber-700',
+            marker: '!',
+        };
+    }
+
+    if (entry.status === 'DELIVERY_FAILED') {
+        return {
+            pointClass: 'border-red-100 bg-red-600 text-white shadow-red-200',
+            labelClass: 'font-semibold text-red-600',
             marker: '!',
         };
     }
@@ -289,6 +301,15 @@ const getTimelineEntries = (order) => {
             reached: Boolean(historyItem) || status === order?.status,
         };
     });
+
+    if (order?.status === 'DELIVERY_FAILED' || historyMap.DELIVERY_FAILED) {
+        steps.push({
+            status: 'DELIVERY_FAILED',
+            changedAt: historyMap.DELIVERY_FAILED?.changedAt || order?.updatedAt || null,
+            note: historyMap.DELIVERY_FAILED?.note || '',
+            reached: true,
+        });
+    }
 
     if (['CANCELLED', 'CANCEL_REQUESTED'].includes(order?.status) || historyMap.CANCELLED) {
         const cancelStatus = historyMap.CANCELLED ? 'CANCELLED' : 'CANCEL_REQUESTED';
