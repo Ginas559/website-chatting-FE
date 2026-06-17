@@ -21,16 +21,16 @@ const ChatWidget = () => {
         const loadSupportAndHistory = async () => {
             try {
                 const supportRes = await getSupportUserApi();
-                if (supportRes?.data?.success && supportRes.data.data) {
-                    const support = supportRes.data.data;
+                if (supportRes?.success && supportRes.data) {
+                    const support = supportRes.data;
                     setSupportAgent(support);
 
                     // Fetch history
                     const historyRes = await getChatHistoryApi(myUserId, support._id);
-                    if (historyRes?.data?.success) {
+                    if (historyRes?.success) {
                         // Bug 5: History is sorted descending (newest first) by backend, 
                         // we store it directly so it renders reversed.
-                        setMessages(historyRes.data.data || []);
+                        setMessages(historyRes.data || []);
                     }
                 }
             } catch (error) {
@@ -94,9 +94,9 @@ const ChatWidget = () => {
 
         try {
             const res = await sendChatMessageApi(supportAgent._id, inputText);
-            if (res?.data?.success && res.data.message) {
+            if (res?.success && res.message) {
                 // Prepend to state list (matching the descending order of history)
-                setMessages((prev) => [res.data.message, ...prev]);
+                setMessages((prev) => [res.message, ...prev]);
                 setInputText('');
             }
         } catch (error) {
