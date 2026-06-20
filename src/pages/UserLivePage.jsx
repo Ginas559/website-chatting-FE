@@ -3,26 +3,29 @@ import { Alert, Button, Card, Empty, message, Spin, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import { livestreamApi } from '../api/livestreamApi';
 import { createLivestreamSocket } from '../sockets/livestreamSocket';
+import LiveChatBox from '../components/livestream/LiveChatBox';
 
-const rtcConfig = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-    ],
-};
+const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const PEER_CONNECT_TIMEOUT_MS = 30000;
+const rtcConfig = { iceServers: ICE_SERVERS };
 
 const UserLivePage = () => {
     const videoRef = useRef(null);
     const socketRef = useRef(null);
     const peerRef = useRef(null);
+    const peerTimeoutRef = useRef(null);
     const adminSocketIdRef = useRef('');
     const remoteStreamRef = useRef(new MediaStream());
 
     const [livestream, setLivestream] = useState(null);
+    const [liveSocket, setLiveSocket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [watching, setWatching] = useState(false);
     const [ended, setEnded] = useState(false);
 
     const closeConnection = () => {
+        window.clearTimeout(peerTimeoutRef.current);
+        peerTimeoutRef.current = null;
         peerRef.current?.close();
         peerRef.current = null;
         adminSocketIdRef.current = '';
@@ -35,6 +38,7 @@ const UserLivePage = () => {
         socketRef.current?.emit('user-disconnect');
         socketRef.current?.disconnect();
         socketRef.current = null;
+        setLiveSocket(null);
         setWatching(false);
     };
 
@@ -42,7 +46,8 @@ const UserLivePage = () => {
         setLoading(true);
         try {
             const response = await livestreamApi.getCurrent();
-            setLivestream(response?.data || null);
+            const current = response?.data || {};
+            setLivestream(current.hasLive && current.hasActiveAdminSocket ? current.live : null);
             setEnded(false);
         } catch (error) {
             message.error(error?.message || error?.errMessage || 'Không thể kiểm tra livestream');
@@ -69,6 +74,7 @@ const UserLivePage = () => {
             if (event.candidate && adminSocketIdRef.current) {
                 // ICE Candidate la thong tin duong mang de hai trinh duyet tim cach ket noi.
                 socketRef.current?.emit('ice-candidate', {
+                    liveId: livestream?._id,
                     targetSocketId: adminSocketIdRef.current,
                     candidate: event.candidate,
                 });
@@ -76,10 +82,21 @@ const UserLivePage = () => {
         };
 
         peer.onconnectionstatechange = () => {
+            if (['connected', 'completed'].includes(peer.connectionState)) {
+                window.clearTimeout(peerTimeoutRef.current);
+                peerTimeoutRef.current = null;
+            }
             if (['closed', 'failed', 'disconnected'].includes(peer.connectionState)) {
                 closeConnection();
             }
         };
+
+        peerTimeoutRef.current = window.setTimeout(() => {
+            if (peerRef.current && !['connected', 'completed'].includes(peerRef.current.connectionState)) {
+                message.error('Kết nối livestream quá thời gian chờ');
+                closeConnection();
+            }
+        }, PEER_CONNECT_TIMEOUT_MS);
 
         return peer;
     };
@@ -89,14 +106,16 @@ const UserLivePage = () => {
 
         const socket = createLivestreamSocket();
         socketRef.current = socket;
+        setLiveSocket(socket);
         setWatching(true);
         setEnded(false);
 
         socket.on('connect', () => {
-            socket.emit('user-join-live', { livestreamId: livestream._id });
+            socket.emit('user-join-live', { liveId: livestream._id });
         });
 
-        socket.on('offer', async ({ fromSocketId, offer }) => {
+        socket.on('offer', async ({ liveId, fromSocketId, offer }) => {
+            if (String(liveId) !== String(livestream._id)) return;
             try {
                 adminSocketIdRef.current = fromSocketId;
                 const peer = peerRef.current || createPeerConnection();
@@ -109,6 +128,7 @@ const UserLivePage = () => {
                 await peer.setLocalDescription(answer);
 
                 socket.emit('answer', {
+                    liveId,
                     targetSocketId: fromSocketId,
                     answer,
                 });
@@ -118,12 +138,14 @@ const UserLivePage = () => {
             }
         });
 
-        socket.on('ice-candidate', async ({ candidate }) => {
+        socket.on('ice-candidate', async ({ liveId, candidate }) => {
+            if (String(liveId) !== String(livestream._id)) return;
             if (!peerRef.current || !candidate) return;
             await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         });
 
-        socket.on('admin-end-live', () => {
+        socket.on('admin-end-live', ({ liveId }) => {
+            if (String(liveId) !== String(livestream._id)) return;
             closeConnection();
             setLivestream(null);
             setEnded(true);
@@ -162,7 +184,7 @@ const UserLivePage = () => {
                         <Empty description="Hiện chưa có livestream" />
                     </Card>
                 ) : (
-                    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                         <Card>
                             <video
                                 ref={videoRef}
@@ -183,6 +205,9 @@ const UserLivePage = () => {
                                 </Button>
                             </div>
                         </Card>
+                        <div className="lg:col-span-2">
+                            <LiveChatBox liveId={livestream?._id} socket={liveSocket} disabled={!watching || ended} />
+                        </div>
                     </div>
                 )}
             </div>
