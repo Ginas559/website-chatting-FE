@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Empty, message, Spin, Tag } from 'antd';
+import { Alert, Button, Empty, message, Spin, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import { livestreamApi } from '../api/livestreamApi';
 import { createLivestreamSocket } from '../sockets/livestreamSocket';
@@ -163,54 +163,54 @@ const UserLivePage = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-50 px-4 py-8">
-            <div className="mx-auto max-w-5xl">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Livestream SmartZone</h1>
-                        <p className="mt-1 text-sm text-slate-500">Xem livestream realtime bằng WebRTC native.</p>
-                    </div>
-                    <Link className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" to="/">
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+                <div className="mx-auto flex max-w-[1800px] items-center gap-4">
+                    <Link to="/" className="text-xl font-black text-slate-950">SmartZone Live</Link>
+                    <Link className="ml-auto rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" to="/">
                         Trang chủ
                     </Link>
                 </div>
+            </header>
+
+            <main className="mx-auto max-w-[1800px] px-6 py-6">
 
                 {loading ? (
-                    <Card><Spin /></Card>
+                    <div className="grid min-h-[60vh] place-items-center"><Spin /></div>
                 ) : ended ? (
                     <Alert type="info" showIcon message="Livestream đã kết thúc" />
                 ) : !livestream ? (
-                    <Card>
+                    <div className="grid min-h-[60vh] place-items-center rounded-2xl border border-slate-200 bg-white">
                         <Empty description="Hiện chưa có livestream" />
-                    </Card>
+                    </div>
                 ) : (
-                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-                        <Card>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                controls
-                                className="aspect-video w-full rounded-xl bg-slate-950"
-                            />
-                        </Card>
-
-                        <Card title="Phiên đang live">
-                            <div className="space-y-4">
-                                <Tag color="red">LIVE</Tag>
-                                <h2 className="text-xl font-bold text-slate-900">{livestream.title}</h2>
-                                <p className="text-sm leading-6 text-slate-500">{livestream.description || 'Không có mô tả'}</p>
-                                <Button type="primary" block loading={watching && !peerRef.current} onClick={startWatching} disabled={watching}>
-                                    {watching ? 'Đang xem livestream' : 'Xem livestream'}
-                                </Button>
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                        <section>
+                            <div className="overflow-hidden rounded-2xl bg-black">
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    controls
+                                    className="aspect-video w-full bg-black object-contain"
+                                />
                             </div>
-                        </Card>
-                        <div className="lg:col-span-2">
-                            <LiveChatBox liveId={livestream?._id} socket={liveSocket} disabled={!watching || ended} />
-                        </div>
+                            <div className="mt-4">
+                                <h1 className="text-2xl font-bold leading-tight text-slate-950">{livestream.title}</h1>
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                    <Tag color="red">LIVE</Tag>
+                                    <span className="text-sm text-slate-500">{livestream.description || 'Không có mô tả'}</span>
+                                    <Button className="ml-auto rounded-full" type="primary" loading={watching && !peerRef.current} onClick={startWatching} disabled={watching}>
+                                        {watching ? 'Đang xem livestream' : 'Xem livestream'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <LiveChatBox liveId={livestream?._id} socket={liveSocket} disabled={!watching || ended} />
                     </div>
                 )}
-            </div>
+            </main>
         </div>
     );
 };
