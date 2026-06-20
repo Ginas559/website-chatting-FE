@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
@@ -57,6 +57,7 @@ const validateForm = (values) => {
 const CheckoutPage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const location = useLocation();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const [cart, setCart] = useState(() => getCartSnapshot());
     const [form, setForm] = useState(() => ({
@@ -79,8 +80,22 @@ const CheckoutPage = () => {
     const [usePoints, setUsePoints] = useState(false);
     const [previewResult, setPreviewResult] = useState(null);
 
-    const items = Array.isArray(cart.items) ? cart.items : [];
-    const subtotal = useMemo(() => Number(cart.subtotal || 0), [cart.subtotal]);
+    const selectedItemIds = useMemo(() => {
+        return location.state?.selectedItemIds || [];
+    }, [location.state]);
+
+    const items = useMemo(() => {
+        const allItems = Array.isArray(cart.items) ? cart.items : [];
+        if (selectedItemIds.length > 0) {
+            const selectedSet = new Set(selectedItemIds.map(id => String(id)));
+            return allItems.filter(item => selectedSet.has(String(item.productId)));
+        }
+        return allItems;
+    }, [cart.items, selectedItemIds]);
+
+    const subtotal = useMemo(() => {
+        return items.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+    }, [items]);
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
 
@@ -147,6 +162,7 @@ const CheckoutPage = () => {
                 shippingInfo: previewShipping,
                 couponCode: code,
                 usePoints: points,
+                itemIds: selectedItemIds,
             });
             if (res?.errCode === 0 && res?.data) {
                 setPreviewResult(res.data);
@@ -186,6 +202,7 @@ const CheckoutPage = () => {
                 shippingInfo: previewShipping,
                 couponCode: cleanCode,
                 usePoints: usePoints,
+                itemIds: selectedItemIds,
             });
             if (res?.errCode === 0 && res?.data) {
                 setPreviewResult(res.data);
@@ -258,6 +275,7 @@ const CheckoutPage = () => {
                 paymentMethod,
                 couponCode: appliedCoupon,
                 usePoints,
+                itemIds: selectedItemIds,
                 shippingInfo: {
                     fullName: form.fullName.trim(),
                     phone: form.phone.trim(),

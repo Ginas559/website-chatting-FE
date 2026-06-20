@@ -62,8 +62,8 @@ export const addRecentlyViewedProductApi = (slug) => {
     return axios.post(`products/${slug}/viewed`);
 };
 
-export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode, couponCode, usePoints }) => {
-    return axios.post('orders/checkout', { shippingInfo, paymentMethod, bankCode, couponCode, usePoints });
+export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode, couponCode, usePoints, itemIds }) => {
+    return axios.post('orders/checkout', { shippingInfo, paymentMethod, bankCode, couponCode, usePoints, itemIds });
 };
 
 // Tien - Lấy các voucher khả dụng cho giỏ hàng
@@ -72,8 +72,8 @@ export const getMyVouchersApi = () => {
 };
 
 // Tien - Xem trước kết quả tính tiền giảm giá & điểm tích lũy
-export const previewCheckoutApi = ({ shippingInfo, couponCode, usePoints }) => {
-    return axios.post('orders/checkout/preview', { shippingInfo, couponCode, usePoints });
+export const previewCheckoutApi = ({ shippingInfo, couponCode, usePoints, itemIds }) => {
+    return axios.post('orders/checkout/preview', { shippingInfo, couponCode, usePoints, itemIds });
 };
 
 export const verifyVnpayReturnApi = (params = {}) => {
