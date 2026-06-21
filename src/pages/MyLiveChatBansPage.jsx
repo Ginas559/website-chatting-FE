@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Empty, Input, Modal, Spin, Tag, message } from 'antd';
+import { Alert, Button, Empty, Input, Modal, Spin, Table, Tag, message } from 'antd';
 import { Link } from 'react-router-dom';
 import { liveChatModerationApi } from '../api/liveChatModerationApi';
 
@@ -15,6 +15,25 @@ const violationText = {
 };
 
 const formatDateTime = (value) => value ? new Date(value).toLocaleString('vi-VN') : '-';
+
+const buildCommentColumns = () => [
+    {
+        title: 'STT',
+        width: 80,
+        render: (_, __, index) => index + 1,
+    },
+    {
+        title: 'Bình luận vi phạm',
+        dataIndex: 'content',
+        render: (text) => <span className="font-medium text-slate-900">{text}</span>,
+    },
+    {
+        title: 'Thời gian',
+        dataIndex: 'createdAt',
+        width: 220,
+        render: formatDateTime,
+    },
+];
 
 const MyLiveChatBansPage = () => {
     const [items, setItems] = useState([]);
@@ -99,16 +118,14 @@ const MyLiveChatBansPage = () => {
                                         Thời hạn khóa: <b>{item.banDays} ngày</b>, đến <b>{formatDateTime(item.bannedUntil)}</b>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        {(item.comments || []).map((comment, index) => (
-                                            <div key={`${item._id}-${index}`} className="rounded-xl border border-slate-200 p-3">
-                                                <div className="font-medium text-slate-900">{comment.content}</div>
-                                                <div className="mt-1 text-xs text-slate-500">
-                                                    Label {comment.predictedLabel} - {comment.labelName} - độ tin cậy {Number(comment.confidence || 0).toFixed(2)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <Table
+                                        rowKey={(_, index) => `${item._id}-${index}`}
+                                        size="small"
+                                        pagination={false}
+                                        columns={buildCommentColumns()}
+                                        dataSource={item.comments || []}
+                                        className="text-left"
+                                    />
 
                                     {item.status === 'ACTIVE' ? (
                                         <Button className="mt-4" type="primary" onClick={() => openRequestModal(item)}>
