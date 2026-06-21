@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Empty, Input, Tag, message as antMessage } from 'antd';
+import { Alert, Button, Empty, Input, Tag, message as antMessage } from 'antd';
+import { Link } from 'react-router-dom';
 import { liveChatApi } from '../../api/liveChatApi';
 
 const roleClass = {
@@ -23,7 +24,10 @@ const LiveChatBox = ({ liveId, socket, disabled = false }) => {
     const [messages, setMessages] = useState([]);
     const [content, setContent] = useState('');
     const [sending, setSending] = useState(false);
+    const [banInfo, setBanInfo] = useState(null);
+    const [warningText, setWarningText] = useState('');
     const pinnedMessage = useMemo(() => messages.find((item) => item.isPinned && !item.isDeleted), [messages]);
+    const chatDisabled = disabled || Boolean(banInfo);
 
     const shouldAutoScroll = () => {
         const el = listRef.current;
@@ -85,23 +89,42 @@ const LiveChatBox = ({ liveId, socket, disabled = false }) => {
             upsertMessage(message);
         };
         const onError = ({ message }) => antMessage.error(message || 'Lỗi live chat');
+        const onWarning = ({ message }) => {
+            setWarningText(message || 'Bình luận của bạn chưa phù hợp.');
+            antMessage.warning(message || 'Bình luận của bạn chưa phù hợp.');
+        };
+        const onBanned = (payload) => {
+            setBanInfo(payload);
+            setWarningText('');
+            antMessage.error(payload?.message || 'Bạn đang bị khóa chat.');
+        };
+        const onUnbanned = () => {
+            setBanInfo(null);
+            antMessage.success('Bạn đã được gỡ khóa chat.');
+        };
 
         socket.on('receive-live-chat-message', onReceive);
         socket.on('live-chat-message-deleted', onDeleted);
         socket.on('live-chat-message-pinned', onPinned);
         socket.on('live-chat-error', onError);
+        socket.on('live-chat-warning', onWarning);
+        socket.on('live-chat-banned', onBanned);
+        socket.on('live-chat-unbanned', onUnbanned);
 
         return () => {
             socket.off('receive-live-chat-message', onReceive);
             socket.off('live-chat-message-deleted', onDeleted);
             socket.off('live-chat-message-pinned', onPinned);
             socket.off('live-chat-error', onError);
+            socket.off('live-chat-warning', onWarning);
+            socket.off('live-chat-banned', onBanned);
+            socket.off('live-chat-unbanned', onUnbanned);
         };
     }, [socket, liveId]);
 
     const sendMessage = () => {
         const text = content.trim();
-        if (!text || !socket || !liveId || disabled) return;
+        if (!text || !socket || !liveId || chatDisabled) return;
 
         setSending(true);
         socket.emit('send-live-chat-message', { liveId, content: text });
@@ -116,6 +139,21 @@ const LiveChatBox = ({ liveId, socket, disabled = false }) => {
                 <div className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">LIVE</div>
             </div>
             <div className="px-3 pt-3">
+                {banInfo ? (
+                    <Alert
+                        className="mb-3"
+                        type="error"
+                        showIcon
+                        message="Bạn đang bị khóa chat"
+                        description={(
+                            <span>
+                                Khóa đến {banInfo.bannedUntil ? new Date(banInfo.bannedUntil).toLocaleString('vi-VN') : 'chưa rõ'}.
+                                {' '}<Link to="/live-chat/my-bans">Xem án phạt</Link>
+                            </span>
+                        )}
+                    />
+                ) : null}
+                {warningText ? <Alert className="mb-3" type="warning" showIcon message={warningText} closable onClose={() => setWarningText('')} /> : null}
                 {pinnedMessage ? (
                     <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
                         <b className="text-amber-700">Đã ghim:</b> {pinnedMessage.content}
@@ -145,13 +183,13 @@ const LiveChatBox = ({ liveId, socket, disabled = false }) => {
                     <Input
                         value={content}
                         maxLength={200}
-                        disabled={disabled}
-                        placeholder={disabled ? 'Chat đã đóng' : 'Trò chuyện với tư cách người đăng ký...'}
+                        disabled={chatDisabled}
+                        placeholder={chatDisabled ? 'Chat đã đóng' : 'Trò chuyện với tư cách người đăng ký...'}
                         onChange={(event) => setContent(event.target.value)}
                         onPressEnter={sendMessage}
                         className="rounded-full border-slate-200 bg-slate-50 px-4 text-slate-900 placeholder:text-slate-400"
                     />
-                    <Button className="rounded-full" type="primary" loading={sending} disabled={disabled || !content.trim()} onClick={sendMessage}>Gửi</Button>
+                    <Button className="rounded-full" type="primary" loading={sending} disabled={chatDisabled || !content.trim()} onClick={sendMessage}>Gửi</Button>
                 </div>
             </div>
         </div>
