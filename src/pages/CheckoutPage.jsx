@@ -78,6 +78,7 @@ const CheckoutPage = () => {
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState('');
     const [usePoints, setUsePoints] = useState(false);
+    const [pointsToUse, setPointsToUse] = useState(0);
     const [previewResult, setPreviewResult] = useState(null);
 
     const selectedItemIds = useMemo(() => {
@@ -149,7 +150,7 @@ const CheckoutPage = () => {
     }, [isAuthenticated]);
 
     // Tien - Hàm xem trước tính toán giá trị đơn hàng
-    const triggerPreview = async (code, points) => {
+    const triggerPreview = async (code, points, pToUse) => {
         try {
             const previewShipping = {
                 fullName: form.fullName.trim().length >= 2 ? form.fullName.trim() : 'Khách hàng',
@@ -162,6 +163,7 @@ const CheckoutPage = () => {
                 shippingInfo: previewShipping,
                 couponCode: code,
                 usePoints: points,
+                pointsToUse: pToUse !== undefined ? pToUse : (points ? pointsToUse : 0),
                 itemIds: selectedItemIds,
             });
             if (res?.errCode === 0 && res?.data) {
@@ -179,7 +181,40 @@ const CheckoutPage = () => {
         const checked = e.target.checked;
         setUsePoints(checked);
         setFeedback('');
-        void triggerPreview(appliedCoupon, checked);
+        const initialPoints = checked ? (user?.rewardPoints || 0) : 0;
+        setPointsToUse(initialPoints);
+        void triggerPreview(appliedCoupon, checked, initialPoints);
+    };
+
+    const handlePointsInputChange = (e) => {
+        const val = e.target.value;
+        if (val === '') {
+            setPointsToUse('');
+            return;
+        }
+        let parsed = parseInt(val, 10);
+        if (isNaN(parsed) || parsed < 0) {
+            parsed = 0;
+        }
+        const maxPoints = user?.rewardPoints || 0;
+        if (parsed > maxPoints) {
+            parsed = maxPoints;
+        }
+        setPointsToUse(parsed);
+        void triggerPreview(appliedCoupon, usePoints, parsed);
+    };
+
+    const handlePointsInputBlur = () => {
+        if (pointsToUse === '') {
+            setPointsToUse(0);
+            void triggerPreview(appliedCoupon, usePoints, 0);
+        }
+    };
+
+    const handleApplyMaxPoints = () => {
+        const maxPoints = user?.rewardPoints || 0;
+        setPointsToUse(maxPoints);
+        void triggerPreview(appliedCoupon, usePoints, maxPoints);
     };
 
 
@@ -202,6 +237,7 @@ const CheckoutPage = () => {
                 shippingInfo: previewShipping,
                 couponCode: cleanCode,
                 usePoints: usePoints,
+                pointsToUse: usePoints ? pointsToUse : 0,
                 itemIds: selectedItemIds,
             });
             if (res?.errCode === 0 && res?.data) {
@@ -227,7 +263,7 @@ const CheckoutPage = () => {
         setAppliedCoupon('');
         setCouponCode('');
         setFeedback('');
-        void triggerPreview('', usePoints);
+        void triggerPreview('', usePoints, pointsToUse);
     };
 
     const onLogout = async () => {
@@ -275,6 +311,7 @@ const CheckoutPage = () => {
                 paymentMethod,
                 couponCode: appliedCoupon,
                 usePoints,
+                pointsToUse: usePoints ? (parseInt(pointsToUse, 10) || 0) : 0,
                 itemIds: selectedItemIds,
                 shippingInfo: {
                     fullName: form.fullName.trim(),
@@ -487,13 +524,40 @@ const CheckoutPage = () => {
                                     />
                                     <div>
                                         <span className="block font-bold text-slate-900 text-sm">
-                                            Dùng điểm tích lũy ({user?.rewardPoints || 0} điểm)
+                                            Dùng điểm tích lũy (Bạn có: {user?.rewardPoints || 0} điểm)
                                         </span>
                                         <span className="block text-xs text-slate-500 mt-0.5">
-                                            Quy đổi: -{formatVnd((user?.rewardPoints || 0) * 1000)} (1 điểm = 1,000đ)
+                                            Tỷ lệ quy đổi: 1 điểm = 1,000đ
                                         </span>
                                     </div>
                                 </label>
+
+                                {usePoints && user?.rewardPoints > 0 && (
+                                    <div className="mt-3 pl-8 space-y-2 animate-fadeIn transition-all duration-300">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={user?.rewardPoints || 0}
+                                                value={pointsToUse}
+                                                onChange={handlePointsInputChange}
+                                                onBlur={handlePointsInputBlur}
+                                                className="w-32 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-red-500"
+                                            />
+                                            <span className="text-sm font-medium text-slate-600">điểm</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleApplyMaxPoints}
+                                                className="text-xs font-semibold text-red-600 hover:text-red-700 transition"
+                                            >
+                                                Dùng tối đa
+                                            </button>
+                                        </div>
+                                        <div className="text-xs font-semibold text-emerald-600">
+                                            Giảm giá quy đổi: -{formatVnd((parseInt(pointsToUse, 10) || 0) * 1000)}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Mã giảm giá */}
