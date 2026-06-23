@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useLocation } from 'react-router-dom';
 import { getSocket } from '../../services/socket';
 import { getChatHistoryApi, sendChatMessageApi, getSupportUserApi, markChatAsReadApi } from '../../api/chatApi';
 
 const ChatWidget = () => {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
+    const location = useLocation();
     const [isOpen, setIsOpen] = useState(false);
     const [supportAgent, setSupportAgent] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -13,6 +15,9 @@ const ChatWidget = () => {
     const messagesEndRef = useRef(null);
 
     const myUserId = user?.id || user?._id;
+
+    // Hide widget entirely when on the dedicated Chat page
+    const isChatPage = location.pathname === '/chat';
 
     // Load support agent and history when authenticated and chat is open
     useEffect(() => {
@@ -104,7 +109,7 @@ const ChatWidget = () => {
         }
     };
 
-    if (!isAuthenticated) return null;
+    if (!isAuthenticated || isChatPage) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
