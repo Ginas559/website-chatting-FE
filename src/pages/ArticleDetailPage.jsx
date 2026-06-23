@@ -70,7 +70,7 @@ const ArticleDetailPage = () => {
                     <div className="ml-auto flex items-center gap-3">
                         {isAuthenticated ? (
                             <>
-                                <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2 text-sm font-semibold text-slate-700">{memberName}</div>
+                                <Link to="/user/profile" className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-100">{memberName}</Link>
                                 <button type="button" onClick={onLogout} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Đăng xuất</button>
                             </>
                         ) : (

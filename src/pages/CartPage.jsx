@@ -249,13 +249,13 @@ const CartPage = () => {
                         </Link>
                         {isAuthenticated ? (
                             <>
-                                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                                <Link to="/user/profile" className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-orange-200 hover:bg-orange-50">
                                     <div className="grid h-10 w-10 place-items-center rounded-full bg-red-100 font-bold text-red-700">{memberTag}</div>
                                     <div>
                                         <div className="text-xs text-slate-500">Chào bạn,</div>
                                         <div className="font-bold text-slate-900">{memberName}</div>
                                     </div>
-                                </div>
+                                </Link>
                                 <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={onLogout} type="button">
                                     <LogoutOutlined />
                                     <span>Đăng xuất</span>

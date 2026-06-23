@@ -628,7 +628,7 @@ const OrdersPage = () => {
             <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6">
                 <section className="rounded-2xl border border-slate-300 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
                     <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr_1fr] lg:items-center">
-                        <div className="flex items-center gap-4">
+                        <Link to="/user/profile" className="flex items-center gap-4 rounded-2xl px-2 py-2 transition hover:bg-orange-50">
                             <div className="grid h-16 w-16 place-items-center rounded-full bg-red-50 text-2xl font-bold text-red-600">
                                 {memberName.charAt(0).toUpperCase() || 'M'}
                             </div>
@@ -637,7 +637,7 @@ const OrdersPage = () => {
                                 <div className="mt-1 text-sm text-slate-500">{memberPhone}</div>
                                 <div className="mt-2 inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600">S-Member</div>
                             </div>
-                        </div>
+                        </Link>
                         <div className="border-l-0 border-red-500 pl-0 lg:border-l-2 lg:pl-6">
                             <div className="text-3xl font-medium">{summary.totalPurchasedOrders || 0}</div>
                             <div className="mt-1 text-sm text-slate-500">Tổng đơn đã mua thành công</div>
