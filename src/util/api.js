@@ -71,6 +71,10 @@ export const getMyVouchersApi = () => {
     return axios.get('vouchers/my');
 };
 
+export const getMyLoyaltyApi = () => {
+    return axios.get('loyalty/me');
+};
+
 // Tien - Xem trước kết quả tính tiền giảm giá & điểm tích lũy
 export const previewCheckoutApi = ({ shippingInfo, couponCode, usePoints, pointsToUse, itemIds }) => {
     return axios.post('orders/checkout/preview', { shippingInfo, couponCode, usePoints, pointsToUse, itemIds });

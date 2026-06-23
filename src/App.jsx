@@ -14,6 +14,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import VnpayReturnPage from './pages/VnpayReturnPage';
 import OrdersPage from './pages/OrdersPage';
 import UserLivePage from './pages/UserLivePage';
+import LoyaltyPage from './pages/LoyaltyPage';
 
 function App() {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -34,6 +35,7 @@ function App() {
         <Route path="/checkout" element={isAuthenticated ? <CheckoutPage /> : <Navigate to="/login" replace />} />
         <Route path="/orders" element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" replace />} />
         <Route path="/livestream" element={isAuthenticated ? <UserLivePage /> : <Navigate to="/login" replace />} />
+        <Route path="/loyalty" element={isAuthenticated ? <LoyaltyPage /> : <Navigate to="/login" replace />} />
         <Route path="/vnpay-return" element={<VnpayReturnPage />} />
 
         <Route
