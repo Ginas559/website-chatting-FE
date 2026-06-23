@@ -440,6 +440,12 @@ const StoreHomePage = () => {
                         Trang tìm kiếm
                     </Link>
 
+                    {isAuthenticated && (
+                        <Link to="/chat" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                            Tin nhắn
+                        </Link>
+                    )}
+
                     <a href="#tin-tuc" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                         Tin tức
                     </a>
