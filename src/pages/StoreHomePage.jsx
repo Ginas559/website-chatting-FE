@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { HeartFilled, HeartOutlined, LeftOutlined, LoadingOutlined, RightOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
+import { GiftOutlined, HeartFilled, HeartOutlined, LeftOutlined, LoadingOutlined, RightOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import useFavorites from '../hooks/useFavorites';
 import { getHomeArticlesApi, getHomeProductsApi, getRecentlyViewedProductsApi } from '../util/api';
@@ -453,6 +453,13 @@ const StoreHomePage = () => {
                             <Link className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100" to="/orders">
                                 <SnippetsOutlined />
                                 <span>Đơn hàng</span>
+                            </Link>
+                        ) : null}
+
+                        {isAuthenticated ? (
+                            <Link className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100" to="/loyalty">
+                                <GiftOutlined />
+                                <span>Ưu đãi</span>
                             </Link>
                         ) : null}
 
