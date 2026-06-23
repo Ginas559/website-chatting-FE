@@ -11,6 +11,9 @@ import NotificationBell from '../components/common/NotificationBell';
 import ToastNotification from '../components/common/ToastNotification';
 import useFavorites from '../hooks/useFavorites';
 import { getProductId } from '../util/productId';
+import { getChatUserByIdApi } from '../api/chatApi';
+import { Modal, Spin, message } from 'antd';
+
 
 const formatVnd = (value) => {
     return Number(value || 0).toLocaleString('vi-VN', {
@@ -38,6 +41,34 @@ const ProductDetailPage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const myUserId = user?.id || user?._id;
+
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(false);
+    const [profileUser, setProfileUser] = useState(null);
+
+    const handleOpenProfile = async (reviewerUserId) => {
+        if (!reviewerUserId) return;
+        setProfileModalOpen(true);
+        setLoadingProfile(true);
+        setProfileUser(null);
+        try {
+            const res = await getChatUserByIdApi(reviewerUserId);
+            if (res?.success && res.data) {
+                setProfileUser(res.data);
+            } else {
+                message.error('Không thể tải thông tin người dùng');
+                setProfileModalOpen(false);
+            }
+        } catch (err) {
+            console.error('Error fetching profile:', err);
+            message.error('Lỗi khi tải thông tin người dùng');
+            setProfileModalOpen(false);
+        } finally {
+            setLoadingProfile(false);
+        }
+    };
+
     const notificationsProps = useNotifications();
     const [loading, setLoading] = useState(true);
     const [detail, setDetail] = useState(null);
@@ -341,6 +372,12 @@ const ProductDetailPage = () => {
                         Trang tìm kiếm
                     </Link>
 
+                    {isAuthenticated && (
+                        <Link to="/chat" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                            Tin nhắn
+                        </Link>
+                    )}
+
                     <Link to="/" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                         Tin tức
                     </Link>
@@ -620,11 +657,28 @@ const ProductDetailPage = () => {
                                     <article key={review.id} className="w-full max-w-full overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex min-w-0 items-center gap-3">
-                                                <div className="grid h-11 w-11 place-items-center rounded-full bg-orange-100 font-bold text-orange-700">
-                                                    {displayName.charAt(0).toUpperCase()}
-                                                </div>
+                                                {review.user?.image ? (
+                                                    <img 
+                                                        src={review.user.image} 
+                                                        alt="" 
+                                                        onClick={() => handleOpenProfile(review.user?.id)}
+                                                        className="h-11 w-11 shrink-0 rounded-full border border-slate-200 object-cover cursor-pointer transition transform hover:scale-105"
+                                                    />
+                                                ) : (
+                                                    <div 
+                                                        onClick={() => handleOpenProfile(review.user?.id)}
+                                                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 font-bold text-orange-700 cursor-pointer transition transform hover:scale-105"
+                                                    >
+                                                        {displayName.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
                                                 <div className="min-w-0">
-                                                    <div className="break-all font-bold text-slate-900 [overflow-wrap:anywhere]">{displayName}</div>
+                                                    <div 
+                                                        onClick={() => handleOpenProfile(review.user?.id)}
+                                                        className="break-all font-bold text-slate-900 cursor-pointer hover:text-orange-500 transition [overflow-wrap:anywhere]"
+                                                    >
+                                                        {displayName}
+                                                    </div>
                                                     <div className="text-xs text-slate-500">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
                                                 </div>
                                             </div>
@@ -689,6 +743,96 @@ const ProductDetailPage = () => {
                     </div>
                 </section>
             </main>
+
+            <Modal
+                title={null}
+                open={profileModalOpen}
+                onCancel={() => setProfileModalOpen(false)}
+                footer={null}
+                width={400}
+                centered
+                bodyStyle={{ padding: 0 }}
+                styles={{ body: { padding: 0 } }}
+            >
+                <Spin spinning={loadingProfile}>
+                    {profileUser && (
+                        <div className="relative overflow-hidden rounded-3xl bg-white font-sans text-slate-800">
+                            {/* Decorative cover gradient */}
+                            <div className="h-32 bg-gradient-to-br from-orange-500 to-red-500 relative">
+                                <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+                            </div>
+                            
+                            {/* User Avatar */}
+                            <div className="absolute top-16 left-1/2 -translate-x-1/2">
+                                {profileUser.image ? (
+                                    <img 
+                                        src={profileUser.image} 
+                                        alt="" 
+                                        className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg" 
+                                    />
+                                ) : (
+                                    <div className="grid h-24 w-24 place-items-center rounded-full bg-orange-100 text-orange-600 font-bold text-3xl border-4 border-white shadow-lg">
+                                        {profileUser.firstName?.charAt(0).toUpperCase() || 'U'}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* User Content */}
+                            <div className="pt-14 pb-6 px-6 text-center">
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                                    {profileUser.firstName} {profileUser.lastName}
+                                </h3>
+                                
+                                {/* Role Badge */}
+                                <div className="mt-2">
+                                    <span className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${
+                                        profileUser.roleId === 'R1' ? 'bg-red-100 text-red-600 border border-red-200' :
+                                        profileUser.roleId === 'R3' ? 'bg-blue-100 text-blue-600 border border-blue-200' :
+                                        profileUser.roleId === 'R4' ? 'bg-green-100 text-green-600 border border-green-200' :
+                                        'bg-slate-100 text-slate-600 border border-slate-200'
+                                    }`}>
+                                        {profileUser.roleId === 'R1' ? 'Admin' :
+                                         profileUser.roleId === 'R3' ? 'Manager' :
+                                         profileUser.roleId === 'R4' ? 'Shipper' : 'Khách hàng'}
+                                    </span>
+                                </div>
+                                
+                                <p className="text-sm text-slate-500 mt-4 font-medium">{profileUser.email}</p>
+                                
+                                {/* Chat / Action button */}
+                                <div className="mt-6 flex flex-col gap-2">
+                                    {isAuthenticated ? (
+                                        profileUser._id === myUserId || profileUser.id === myUserId ? (
+                                            <div className="text-xs text-slate-400 py-2.5 font-medium">Đây là tài khoản của bạn</div>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setProfileModalOpen(false);
+                                                    navigate(`/chat?userId=${profileUser._id || profileUser.id}`);
+                                                }}
+                                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm py-3 px-6 rounded-2xl transition duration-200 transform active:scale-95 shadow-md shadow-slate-950/10"
+                                            >
+                                                Nhắn tin
+                                            </button>
+                                        )
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                setProfileModalOpen(false);
+                                                navigate('/login');
+                                            }}
+                                            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm py-3 px-6 rounded-2xl transition duration-200 transform active:scale-95 shadow-md shadow-orange-500/10"
+                                        >
+                                            Đăng nhập để nhắn tin
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </Spin>
+            </Modal>
+
             <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
         </div>
     );

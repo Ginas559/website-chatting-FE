@@ -15,6 +15,9 @@ import VnpayReturnPage from './pages/VnpayReturnPage';
 import OrdersPage from './pages/OrdersPage';
 import UserLivePage from './pages/UserLivePage';
 import LoyaltyPage from './pages/LoyaltyPage';
+import MyLiveChatBansPage from './pages/MyLiveChatBansPage';
+import ChatWidget from './components/chat/ChatWidget';
+import ChatPage from './pages/ChatPage';
 
 function App() {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -36,6 +39,7 @@ function App() {
         <Route path="/orders" element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" replace />} />
         <Route path="/livestream" element={isAuthenticated ? <UserLivePage /> : <Navigate to="/login" replace />} />
         <Route path="/loyalty" element={isAuthenticated ? <LoyaltyPage /> : <Navigate to="/login" replace />} />
+        <Route path="/live-chat/my-bans" element={isAuthenticated ? <MyLiveChatBansPage /> : <Navigate to="/login" replace />} />
         <Route path="/vnpay-return" element={<VnpayReturnPage />} />
 
         <Route
@@ -43,8 +47,15 @@ function App() {
           element={isAuthenticated ? <UserProfilePage /> : <Navigate to="/login" replace />}
         />
 
+        <Route
+          path="/chat"
+          element={isAuthenticated ? <ChatPage /> : <Navigate to="/login" replace />}
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      {isAuthenticated && <ChatWidget />}
     </Router>
   );
 }
