@@ -68,7 +68,7 @@ export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode
 
 // Tien - Lấy các voucher khả dụng cho giỏ hàng
 export const getMyVouchersApi = () => {
-    return axios.get('vouchers/available');
+    return axios.get('vouchers/my');
 };
 
 // Tien - Xem trước kết quả tính tiền giảm giá & điểm tích lũy

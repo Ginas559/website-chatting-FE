@@ -13,6 +13,30 @@ const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     maximumFractionDigits: 0,
 });
 
+const normalizeAvailableVouchers = (payload) => {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    const systemVouchers = Array.isArray(payload?.systemVouchers) ? payload.systemVouchers : [];
+    const reviewCoupons = Array.isArray(payload?.reviewCoupons) ? payload.reviewCoupons : [];
+
+    return [
+        ...systemVouchers,
+        ...reviewCoupons.map((coupon) => ({
+            _id: coupon.code,
+            code: coupon.code,
+            description: `Voucher thưởng đánh giá ${coupon.discountPercent || 0}%`,
+            discountType: 'PERCENT',
+            discountValue: coupon.discountPercent || 0,
+            maxDiscountAmount: 0,
+            minOrderAmount: coupon.minOrderAmount || 0,
+            endDate: coupon.expiresAt,
+            isRewardCoupon: true,
+        })),
+    ];
+};
+
 const initialForm = {
     fullName: '',
     phone: '',
@@ -139,7 +163,7 @@ const CheckoutPage = () => {
         const loadVouchers = async () => {
             try {
                 const res = await getMyVouchersApi();
-                setVouchers(res?.data || []);
+                setVouchers(normalizeAvailableVouchers(res?.data));
             } catch (err) {
                 console.error('Không thể lấy danh sách voucher khả dụng:', err);
             }
