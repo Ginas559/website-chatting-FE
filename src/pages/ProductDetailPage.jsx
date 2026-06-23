@@ -617,24 +617,24 @@ const ProductDetailPage = () => {
                                 const displayName = `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Khách hàng';
 
                                 return (
-                                    <article key={review.id} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                                    <article key={review.id} className="overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                                         <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex min-w-0 items-center gap-3">
                                                 <div className="grid h-11 w-11 place-items-center rounded-full bg-orange-100 font-bold text-orange-700">
                                                     {displayName.charAt(0).toUpperCase()}
                                                 </div>
-                                                <div>
-                                                    <div className="font-bold text-slate-900">{displayName}</div>
+                                                <div className="min-w-0">
+                                                    <div className="break-words font-bold text-slate-900 [overflow-wrap:anywhere]">{displayName}</div>
                                                     <div className="text-xs text-slate-500">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1 text-amber-400">{renderStars(review.rating)}</div>
                                         </div>
 
-                                        <div className="mt-4 text-sm font-bold text-slate-900">{review.title || 'Đánh giá sản phẩm'}</div>
-                                        <p className="mt-2 text-sm leading-6 text-slate-600">{review.content}</p>
+                                        <div className="mt-4 break-words text-sm font-bold text-slate-900 [overflow-wrap:anywhere]">{review.title || 'Đánh giá sản phẩm'}</div>
+                                        <p className="mt-2 break-words text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{review.content}</p>
 
-                                        <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                        <div className="mt-4 break-words rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 [overflow-wrap:anywhere]">
                                             {getRewardNoticeMessage(review.reward)}
                                         </div>
                                     </article>
