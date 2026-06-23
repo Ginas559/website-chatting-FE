@@ -1,28 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Empty, message, Spin, Tag } from 'antd';
+import { Alert, Button, Empty, message, Spin, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import { livestreamApi } from '../api/livestreamApi';
 import { createLivestreamSocket } from '../sockets/livestreamSocket';
+import LiveChatBox from '../components/livestream/LiveChatBox';
 
-const rtcConfig = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-    ],
-};
+const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const PEER_CONNECT_TIMEOUT_MS = 30000;
+const rtcConfig = { iceServers: ICE_SERVERS };
 
 const UserLivePage = () => {
     const videoRef = useRef(null);
     const socketRef = useRef(null);
     const peerRef = useRef(null);
+    const peerTimeoutRef = useRef(null);
     const adminSocketIdRef = useRef('');
     const remoteStreamRef = useRef(new MediaStream());
 
     const [livestream, setLivestream] = useState(null);
+    const [liveSocket, setLiveSocket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [watching, setWatching] = useState(false);
     const [ended, setEnded] = useState(false);
 
     const closeConnection = () => {
+        window.clearTimeout(peerTimeoutRef.current);
+        peerTimeoutRef.current = null;
         peerRef.current?.close();
         peerRef.current = null;
         adminSocketIdRef.current = '';
@@ -35,6 +38,7 @@ const UserLivePage = () => {
         socketRef.current?.emit('user-disconnect');
         socketRef.current?.disconnect();
         socketRef.current = null;
+        setLiveSocket(null);
         setWatching(false);
     };
 
@@ -42,7 +46,8 @@ const UserLivePage = () => {
         setLoading(true);
         try {
             const response = await livestreamApi.getCurrent();
-            setLivestream(response?.data || null);
+            const current = response?.data || {};
+            setLivestream(current.hasLive && current.hasActiveAdminSocket ? current.live : null);
             setEnded(false);
         } catch (error) {
             message.error(error?.message || error?.errMessage || 'Không thể kiểm tra livestream');
@@ -69,6 +74,7 @@ const UserLivePage = () => {
             if (event.candidate && adminSocketIdRef.current) {
                 // ICE Candidate la thong tin duong mang de hai trinh duyet tim cach ket noi.
                 socketRef.current?.emit('ice-candidate', {
+                    liveId: livestream?._id,
                     targetSocketId: adminSocketIdRef.current,
                     candidate: event.candidate,
                 });
@@ -76,10 +82,21 @@ const UserLivePage = () => {
         };
 
         peer.onconnectionstatechange = () => {
+            if (['connected', 'completed'].includes(peer.connectionState)) {
+                window.clearTimeout(peerTimeoutRef.current);
+                peerTimeoutRef.current = null;
+            }
             if (['closed', 'failed', 'disconnected'].includes(peer.connectionState)) {
                 closeConnection();
             }
         };
+
+        peerTimeoutRef.current = window.setTimeout(() => {
+            if (peerRef.current && !['connected', 'completed'].includes(peerRef.current.connectionState)) {
+                message.error('Kết nối livestream quá thời gian chờ');
+                closeConnection();
+            }
+        }, PEER_CONNECT_TIMEOUT_MS);
 
         return peer;
     };
@@ -89,14 +106,16 @@ const UserLivePage = () => {
 
         const socket = createLivestreamSocket();
         socketRef.current = socket;
+        setLiveSocket(socket);
         setWatching(true);
         setEnded(false);
 
         socket.on('connect', () => {
-            socket.emit('user-join-live', { livestreamId: livestream._id });
+            socket.emit('user-join-live', { liveId: livestream._id });
         });
 
-        socket.on('offer', async ({ fromSocketId, offer }) => {
+        socket.on('offer', async ({ liveId, fromSocketId, offer }) => {
+            if (String(liveId) !== String(livestream._id)) return;
             try {
                 adminSocketIdRef.current = fromSocketId;
                 const peer = peerRef.current || createPeerConnection();
@@ -109,6 +128,7 @@ const UserLivePage = () => {
                 await peer.setLocalDescription(answer);
 
                 socket.emit('answer', {
+                    liveId,
                     targetSocketId: fromSocketId,
                     answer,
                 });
@@ -118,12 +138,14 @@ const UserLivePage = () => {
             }
         });
 
-        socket.on('ice-candidate', async ({ candidate }) => {
+        socket.on('ice-candidate', async ({ liveId, candidate }) => {
+            if (String(liveId) !== String(livestream._id)) return;
             if (!peerRef.current || !candidate) return;
             await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         });
 
-        socket.on('admin-end-live', () => {
+        socket.on('admin-end-live', ({ liveId }) => {
+            if (String(liveId) !== String(livestream._id)) return;
             closeConnection();
             setLivestream(null);
             setEnded(true);
@@ -141,51 +163,54 @@ const UserLivePage = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-50 px-4 py-8">
-            <div className="mx-auto max-w-5xl">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Livestream SmartZone</h1>
-                        <p className="mt-1 text-sm text-slate-500">Xem livestream realtime bằng WebRTC native.</p>
-                    </div>
-                    <Link className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" to="/">
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+                <div className="mx-auto flex max-w-[1800px] items-center gap-4">
+                    <Link to="/" className="text-xl font-black text-slate-950">SmartZone Live</Link>
+                    <Link className="ml-auto rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" to="/">
                         Trang chủ
                     </Link>
                 </div>
+            </header>
+
+            <main className="mx-auto max-w-[1800px] px-6 py-6">
 
                 {loading ? (
-                    <Card><Spin /></Card>
+                    <div className="grid min-h-[60vh] place-items-center"><Spin /></div>
                 ) : ended ? (
                     <Alert type="info" showIcon message="Livestream đã kết thúc" />
                 ) : !livestream ? (
-                    <Card>
+                    <div className="grid min-h-[60vh] place-items-center rounded-2xl border border-slate-200 bg-white">
                         <Empty description="Hiện chưa có livestream" />
-                    </Card>
+                    </div>
                 ) : (
-                    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                        <Card>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                controls
-                                className="aspect-video w-full rounded-xl bg-slate-950"
-                            />
-                        </Card>
-
-                        <Card title="Phiên đang live">
-                            <div className="space-y-4">
-                                <Tag color="red">LIVE</Tag>
-                                <h2 className="text-xl font-bold text-slate-900">{livestream.title}</h2>
-                                <p className="text-sm leading-6 text-slate-500">{livestream.description || 'Không có mô tả'}</p>
-                                <Button type="primary" block loading={watching && !peerRef.current} onClick={startWatching} disabled={watching}>
-                                    {watching ? 'Đang xem livestream' : 'Xem livestream'}
-                                </Button>
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                        <section>
+                            <div className="overflow-hidden rounded-2xl bg-black">
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    controls
+                                    className="aspect-video w-full bg-black object-contain"
+                                />
                             </div>
-                        </Card>
+                            <div className="mt-4">
+                                <h1 className="text-2xl font-bold leading-tight text-slate-950">{livestream.title}</h1>
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                    <Tag color="red">LIVE</Tag>
+                                    <span className="text-sm text-slate-500">{livestream.description || 'Không có mô tả'}</span>
+                                    <Button className="ml-auto rounded-full" type="primary" loading={watching && !peerRef.current} onClick={startWatching} disabled={watching}>
+                                        {watching ? 'Đang xem livestream' : 'Xem livestream'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <LiveChatBox liveId={livestream?._id} socket={liveSocket} disabled={!watching || ended} />
                     </div>
                 )}
-            </div>
+            </main>
         </div>
     );
 };
