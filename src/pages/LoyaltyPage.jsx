@@ -27,6 +27,22 @@ const formatDate = (value) => {
     return new Date(value).toLocaleDateString('vi-VN');
 };
 
+const formatCountdown = (target) => {
+    if (!target) return '';
+
+    const diffMs = new Date(target).getTime() - Date.now();
+    if (!Number.isFinite(diffMs) || diffMs <= 0) return 'Sắp reset';
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (days > 0) return `${days} ngày ${hours} giờ ${minutes} phút`;
+    return `${hours} giờ ${minutes} phút ${seconds} giây`;
+};
+
 const levelTone = {
     BRONZE: 'from-orange-500 to-red-500',
     SILVER: 'from-slate-500 to-slate-700',
@@ -54,6 +70,7 @@ const LoyaltyPage = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [nowTick, setNowTick] = useState(Date.now());
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -80,6 +97,11 @@ const LoyaltyPage = () => {
         };
     }, [isAuthenticated]);
 
+    useEffect(() => {
+        const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
+
     const membership = data?.membership || {};
     const currentLevel = membership.current || { key: 'BRONZE', name: 'Bronze' };
     const levelClass = levelTone[currentLevel.key] || levelTone.BRONZE;
@@ -87,6 +109,10 @@ const LoyaltyPage = () => {
     const inactiveCoupons = data?.coupons?.inactive || [];
     const missions = data?.missions || [];
     const completedMissions = useMemo(() => missions.filter((mission) => mission.completed).length, [missions]);
+    const nextLevelMessage = membership.next
+        ? `Còn ${formatVnd(membership.spendToNext)} và ${membership.ordersToNext} đơn đã giao để lên ${membership.next.name}.`
+        : 'Bạn đã đạt hạng cao nhất hiện tại.';
+    void nowTick;
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
@@ -176,19 +202,17 @@ const LoyaltyPage = () => {
                                         <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-red-500" style={{ width: `${membership.progressPercent || 0}%` }} />
                                     </div>
                                     <div className="mt-3 text-sm font-semibold text-slate-600">
-                                        {membership.next
-                                            ? `Còn ${membership.pointsToNext} điểm để lên ${membership.next.name}.`
-                                            : 'Bạn đã đạt hạng cao nhất hiện tại.'}
+                                        {nextLevelMessage}
                                     </div>
                                 </div>
                             </div>
                         </section>
 
                         <section className="grid gap-4 md:grid-cols-4">
-                            <StatCard label="Đơn đã giao" value={data?.stats?.deliveredOrders || 0} hint="Cơ sở mở quyền review" />
+                            <StatCard label="Chi tiêu đã giao" value={formatVnd(data?.stats?.totalDeliveredSpend || 0)} hint="Cơ sở xét hạng thành viên" />
+                            <StatCard label="Đơn đã giao" value={data?.stats?.deliveredOrders || 0} hint="Điều kiện phụ để lên hạng" />
                             <StatCard label="Đánh giá" value={data?.stats?.reviews || 0} hint="Nguồn nhận điểm/voucher" />
                             <StatCard label="Yêu thích" value={data?.stats?.favorites || 0} hint="Tín hiệu cá nhân hóa" />
-                            <StatCard label="Tổng voucher" value={data?.coupons?.total || 0} hint="Cá nhân và đã nhận" />
                         </section>
 
                         <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
@@ -218,7 +242,10 @@ const LoyaltyPage = () => {
                                                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                                                             <div className="h-full rounded-full bg-orange-500" style={{ width: `${mission.progressPercent}%` }} />
                                                         </div>
-                                                        <div className="mt-2 text-xs font-semibold text-slate-500">{mission.current}/{mission.target}</div>
+                                                        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+                                                            <span>{mission.current}/{mission.target}</span>
+                                                            {mission.resetAt ? <span>Reset sau {formatCountdown(mission.resetAt)}</span> : null}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
