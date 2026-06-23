@@ -140,7 +140,12 @@ const LoyaltyPage = () => {
                                         <TrophyOutlined />
                                         {currentLevel.name} Member
                                     </div>
-                                    <h1 className="mt-5 text-4xl font-black tracking-tight text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.45)] [-webkit-text-stroke:0.6px_rgba(255,255,255,0.35)] md:text-5xl">Ví ưu đãi của {data?.profile?.name || 'bạn'}</h1>
+                                    <h1
+                                        className="mt-5 text-4xl font-black tracking-tight !text-white md:text-5xl"
+                                        style={{ color: '#ffffff', textShadow: '0 3px 12px rgba(0,0,0,0.55)' }}
+                                    >
+                                        Ví ưu đãi của {data?.profile?.name || 'bạn'}
+                                    </h1>
                                     <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85">
                                         Điểm tích lũy, voucher thưởng review và nhiệm vụ mua sắm được gom lại tại đây để bạn theo dõi dễ hơn.
                                     </p>
