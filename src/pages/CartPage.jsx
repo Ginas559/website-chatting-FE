@@ -207,6 +207,12 @@ const CartPage = () => {
                         Trang tìm kiếm
                     </Link>
 
+                    {isAuthenticated && (
+                        <Link to="/chat" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                            Tin nhắn
+                        </Link>
+                    )}
+
                     <div className="ml-auto flex flex-wrap items-center gap-3">
                         {isAuthenticated ? (
                             <Link className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100" to="/orders">

@@ -14,6 +14,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import VnpayReturnPage from './pages/VnpayReturnPage';
 import OrdersPage from './pages/OrdersPage';
 import UserLivePage from './pages/UserLivePage';
+import ChatWidget from './components/chat/ChatWidget';
+import ChatPage from './pages/ChatPage';
 
 function App() {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -40,9 +42,14 @@ function App() {
           path="/user/profile"
           element={isAuthenticated ? <UserProfilePage /> : <Navigate to="/login" replace />}
         />
+        <Route
+          path="/chat"
+          element={isAuthenticated ? <ChatPage /> : <Navigate to="/login" replace />}
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <ChatWidget />
     </Router>
   );
 }
