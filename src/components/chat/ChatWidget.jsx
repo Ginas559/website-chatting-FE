@@ -62,7 +62,7 @@ const ChatWidget = () => {
                 (message.senderId === supportAgent?._id && message.receiverId === myUserId) ||
                 (message.senderId === myUserId && message.receiverId === supportAgent?._id)
             ) {
-                setMessages((prev) => [message, ...prev]); // Append to front because backend list is descending
+                setMessages((prev) => [...prev, message]); // Append to end because backend list is now sorted ascending
             }
 
             if (!isOpen) {
@@ -95,8 +95,8 @@ const ChatWidget = () => {
         try {
             const res = await sendChatMessageApi(supportAgent._id, inputText);
             if (res?.success && res.message) {
-                // Prepend to state list (matching the descending order of history)
-                setMessages((prev) => [res.message, ...prev]);
+                // Append to state list (matching the ascending order of history)
+                setMessages((prev) => [...prev, res.message]);
                 setInputText('');
             }
         } catch (error) {
@@ -138,9 +138,7 @@ const ChatWidget = () => {
                     </div>
 
                     {/* Messages Body */}
-                    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 flex flex-col-reverse">
-                        <div ref={messagesEndRef} />
-                        
+                    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 flex flex-col gap-3">
                         {/* Messages display */}
                         {messages.length === 0 ? (
                             <div className="my-auto text-center text-slate-400 p-4">
@@ -150,14 +148,14 @@ const ChatWidget = () => {
                             messages.map((msg) => {
                                 const isMe = msg.senderId === myUserId;
                                 return (
-                                    <div key={msg._id || Math.random()} className={`mb-3 flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                    <div key={msg._id || Math.random()} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
                                             isMe 
                                                 ? 'bg-orange-500 text-white rounded-br-none' 
                                                 : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                         }`}>
-                                            {/* Bug 7: Stored XSS vulnerability due to dangerouslySetInnerHTML */}
-                                            <div dangerouslySetInnerHTML={{ __html: msg.content }} />
+                                            {/* Fix Bug 7: Render safely as text node to prevent Stored XSS */}
+                                            <div>{msg.content}</div>
                                             
                                             <span className={`block text-[10px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
                                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -167,6 +165,7 @@ const ChatWidget = () => {
                                 );
                             })
                         )}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     {/* Footer Form */}
