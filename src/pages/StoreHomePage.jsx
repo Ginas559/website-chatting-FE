@@ -470,11 +470,11 @@ const StoreHomePage = () => {
                             </>
                         ) : (
                             <>
-                                <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2 text-left">
+                                <Link to="/user/profile" className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2 text-left transition hover:border-orange-300 hover:bg-orange-100">
                                     <p className="text-xs uppercase tracking-[0.18em] text-orange-700">Thành viên đăng nhập</p>
                                     <p className="text-sm font-bold text-slate-900">{memberName || member.email || 'Member'}</p>
                                     <p className="text-xs text-slate-500">Vai trò: {member.roleId || 'R2'}</p>
-                                </div>
+                                </Link>
 
                                 <button onClick={handleLogout} type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
                                     Đăng xuất
