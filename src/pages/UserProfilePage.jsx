@@ -380,40 +380,64 @@ const UserProfilePage = () => {
                     <ChangePasswordSection />
                 </section>
 
-                <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                    <div className="flex items-end justify-between gap-3">
+                <section className="mt-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-end justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-red">Favorites</p>
-                            <h2 className="mt-1 text-2xl font-black text-slate-900">Sản phẩm yêu thích</h2>
+                            <p className="text-xs font-black uppercase tracking-wider text-brand-red font-sans">Favorites</p>
+                            <h2 className="mt-1 text-xl font-black text-slate-900 font-sans">Sản phẩm yêu thích</h2>
                         </div>
                     </div>
                     {!favoriteProducts.length ? (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                            Bạn chưa có sản phẩm yêu thích nào.
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-xs font-bold text-slate-400">
+                            🔍 Bạn chưa thêm sản phẩm yêu thích nào.
                         </div>
                     ) : (
-                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                             {favoriteProducts.map((product) => (
-                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-red/10">
-                                    <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
-                                        <button
-                                            type="button"
-                                            onClick={(event) => {
-                                                event.preventDefault();
-                                                onToggleFavorite(product);
-                                            }}
-                                            className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-base text-rose-500 shadow transition hover:scale-105"
-                                        >
-                                            {loadingMap[getProductId(product)]
-                                                ? <LoadingOutlined />
-                                                : isFavorite(product) ? <HeartFilled /> : <HeartOutlined />}
-                                        </button>
-                                        <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                                <Link 
+                                    key={product.id} 
+                                    to={`/product/${product.slug || product.id}`} 
+                                    className="group relative block rounded-3xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:shadow-xl hover:border-brand-red/25 hover:-translate-y-1"
+                                >
+                                    {/* Favorite Button */}
+                                    <button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            onToggleFavorite(product);
+                                        }}
+                                        className="absolute right-4 top-4 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-sm text-rose-500 shadow-sm backdrop-blur-sm transition duration-300 hover:scale-110 hover:bg-white"
+                                    >
+                                        {loadingMap[getProductId(product)] ? (
+                                            <LoadingOutlined className="text-xs" />
+                                        ) : isFavorite(product) ? (
+                                            <HeartFilled />
+                                        ) : (
+                                            <HeartOutlined />
+                                        )}
+                                    </button>
+
+                                    {/* Image */}
+                                    <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-slate-50 flex items-center justify-center p-3 relative">
+                                        <img 
+                                            src={product.image} 
+                                            alt={product.name} 
+                                            className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-105" 
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                                        />
                                     </div>
-                                    <div className="p-4 text-left">
-                                        <div className="text-xs uppercase tracking-wide text-slate-400">{product.category}</div>
-                                        <div className="mt-2 font-bold text-slate-900">{product.name}</div>
-                                        <div className="mt-2 text-brand-red font-semibold">{Number(product.price || 0).toLocaleString('vi-VN')}đ</div>
+
+                                    {/* Content */}
+                                    <div className="mt-4 text-left">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block break-words break-all">
+                                            {product.brand} &bull; {product.category}
+                                        </span>
+                                        <h3 className="mt-1 text-sm font-bold text-slate-900 line-clamp-2 min-h-[40px] leading-tight break-words break-all group-hover:text-brand-red transition-colors">
+                                            {product.name}
+                                        </h3>
+                                        <div className="mt-3 text-base font-black text-brand-red leading-none">
+                                            {Number(product.price || 0).toLocaleString('vi-VN')}đ
+                                        </div>
                                     </div>
                                 </Link>
                             ))}
@@ -421,22 +445,44 @@ const UserProfilePage = () => {
                     )}
                 </section>
 
-                <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-red">Recently Viewed</p>
-                    <h2 className="mt-1 text-2xl font-black text-slate-900">Sản phẩm đã xem</h2>
+                <section className="mt-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="border-b border-slate-100 pb-4 mb-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-brand-red font-sans">Recently Viewed</p>
+                        <h2 className="mt-1 text-xl font-black text-slate-900 font-sans">Sản phẩm đã xem gần đây</h2>
+                    </div>
                     {!recentlyViewedProducts.length ? (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                            Chưa có sản phẩm đã xem gần đây.
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-xs font-bold text-slate-400">
+                            👀 Bạn chưa xem sản phẩm nào gần đây.
                         </div>
                     ) : (
-                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                             {recentlyViewedProducts.map((product) => (
-                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-red/10">
-                                    <img src={product.image} alt={product.name} className="aspect-[4/5] w-full object-cover transition duration-300 group-hover:scale-105" />
-                                    <div className="p-4 text-left">
-                                        <div className="text-xs uppercase tracking-wide text-slate-400">{product.category}</div>
-                                        <div className="mt-2 font-bold text-slate-900">{product.name}</div>
-                                        <div className="mt-2 text-brand-red font-semibold">{Number(product.price || 0).toLocaleString('vi-VN')}đ</div>
+                                <Link 
+                                    key={product.id} 
+                                    to={`/product/${product.slug || product.id}`} 
+                                    className="group relative block rounded-3xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:shadow-xl hover:border-brand-red/25 hover:-translate-y-1"
+                                >
+                                    {/* Image */}
+                                    <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-slate-50 flex items-center justify-center p-3 relative">
+                                        <img 
+                                            src={product.image} 
+                                            alt={product.name} 
+                                            className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-105" 
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                                        />
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="mt-4 text-left">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block break-words break-all">
+                                            {product.brand} &bull; {product.category}
+                                        </span>
+                                        <h3 className="mt-1 text-sm font-bold text-slate-900 line-clamp-2 min-h-[40px] leading-tight break-words break-all group-hover:text-brand-red transition-colors">
+                                            {product.name}
+                                        </h3>
+                                        <div className="mt-3 text-base font-black text-brand-red leading-none">
+                                            {Number(product.price || 0).toLocaleString('vi-VN')}đ
+                                        </div>
                                     </div>
                                 </Link>
                             ))}

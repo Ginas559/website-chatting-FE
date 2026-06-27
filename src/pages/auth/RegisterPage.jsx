@@ -146,12 +146,30 @@ const RegisterPage = () => {
                     </>
                 ) : (
                     <>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-center shadow-sm">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Thời gian OTP</p>
-                            <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-                                {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+                        <div className="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="relative w-20 h-20">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="40" cy="40" r="34" stroke="#e2e8f0" strokeWidth="5" fill="transparent" />
+                                    <circle 
+                                        cx="40" 
+                                        cy="40" 
+                                        r="34" 
+                                        stroke="#b71423" 
+                                        strokeWidth="5" 
+                                        fill="transparent" 
+                                        strokeDasharray="213.63" 
+                                        strokeDashoffset={213.63 - (countdown / 300) * 213.63} 
+                                        strokeLinecap="round"
+                                        className="transition-all duration-1000 ease-linear"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-lg font-black text-slate-900 font-sans">
+                                        {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+                                    </span>
+                                </div>
                             </div>
-                            <p className="mt-2 text-sm text-slate-500">Mã OTP hết hạn sau 5 phút</p>
+                            <p className="mt-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Thời gian hiệu lực OTP</p>
                         </div>
 
                         <FormInput label="Nhập mã OTP" name="otpCode" value={formData.otpCode} onChange={handleChange} error={errors.otpCode} placeholder="6 chữ số" />

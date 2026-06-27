@@ -91,20 +91,24 @@ h1 {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
+
   @media (max-width: 1024px) {
     font-size: 36px;
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
+
   @media (max-width: 1024px) {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }
@@ -125,18 +129,24 @@ code {
 }
 
 /* Fix for AntD Carousel / react-slick oversized track */
-.slick-slider, .slick-list, .slick-track {
+.slick-slider,
+.slick-list,
+.slick-track {
   max-width: 100%;
   box-sizing: border-box;
 }
+
 .slick-list {
   overflow: hidden;
 }
+
 .slick-slide {
   width: 100% !important;
   display: block;
 }
-.slick-slide > div, .slick-slide > img {
+
+.slick-slide>div,
+.slick-slide>img {
   width: 100% !important;
   max-width: 100% !important;
 }
@@ -151,7 +161,7 @@ code {
 .product-carousel .slick-list,
 .product-carousel .slick-track,
 .product-carousel .slick-slide,
-.product-carousel .slick-slide > div {
+.product-carousel .slick-slide>div {
   height: 100%;
 }
 
@@ -160,14 +170,17 @@ code {
   align-items: stretch !important;
 }
 
-.product-carousel .slick-slide > div {
+.product-carousel .slick-slide>div {
   width: 100% !important;
 }
 
 @keyframes bounce-short {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-4px);
   }
@@ -182,13 +195,17 @@ code {
   width: 6px;
   height: 6px;
 }
+
 .chat-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .chat-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* light grey scrollbar */
+  background: #cbd5e1;
+  /* light grey scrollbar */
   border-radius: 9999px;
 }
+
 .chat-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
