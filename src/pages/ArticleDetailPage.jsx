@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Carousel, Spin } from 'antd';
+import { Spin } from 'antd';
 import { getArticleDetailApi } from '../util/api';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 
 const ArticleDetailPage = () => {
     const { slug } = useParams();
-    const carouselRef = useRef(null);
     const [loading, setLoading] = useState(true);
     const [article, setArticle] = useState(null);
     const [related, setRelated] = useState([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     useEffect(() => {
         const load = async () => {
@@ -30,6 +30,10 @@ const ArticleDetailPage = () => {
         };
 
         load();
+    }, [slug]);
+
+    useEffect(() => {
+        setCurrentImageIndex(0);
     }, [slug]);
 
     const images = (article && Array.isArray(article.images) && article.images.length) ? article.images : [article?.coverImage].filter(Boolean);
@@ -76,45 +80,45 @@ const ArticleDetailPage = () => {
                         </header>
 
                         {/* Article Media Carousel */}
-                        <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm aspect-[16/9]">
-                            {safeImages.length > 1 ? (
-                                <Carousel ref={carouselRef} autoplay dots={false} adaptiveHeight className="h-full w-full">
-                                    {safeImages.map((src, index) => (
-                                        <div key={src + index} className="aspect-[16/9] w-full bg-slate-50 flex items-center justify-center p-2">
-                                            <img 
-                                                src={src} 
-                                                alt={`${article.title}-${index}`} 
-                                                className="h-full w-full object-cover rounded-2xl" 
-                                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/1200x800?text=No+image'; }} 
-                                            />
-                                        </div>
-                                    ))}
-                                </Carousel>
-                            ) : (
-                                <img 
-                                    src={safeImages[0]} 
-                                    alt={article.title} 
-                                    className="h-full w-full object-cover" 
-                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/1200x800?text=No+image'; }} 
-                                />
-                            )}
+                        <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-sm aspect-[16/9] flex items-center justify-center">
+                            <img 
+                                src={safeImages[currentImageIndex]} 
+                                alt={`${article.title}-${currentImageIndex}`} 
+                                className="h-full w-full object-cover transition-all duration-500" 
+                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/1200x800?text=No+image'; }} 
+                            />
 
                             {safeImages.length > 1 && (
                                 <>
                                     <button
                                         type="button"
-                                        onClick={() => carouselRef.current?.prev()}
+                                        onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? safeImages.length - 1 : prev - 1))}
                                         className="absolute left-4 top-1/2 z-20 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-slate-500 shadow-md backdrop-blur-sm transition hover:text-brand-red active:scale-95"
                                     >
                                         ‹
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => carouselRef.current?.next()}
+                                        onClick={() => setCurrentImageIndex((prev) => (prev === safeImages.length - 1 ? 0 : prev + 1))}
                                         className="absolute right-4 top-1/2 z-20 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-slate-500 shadow-md backdrop-blur-sm transition hover:text-brand-red active:scale-95"
                                     >
                                         ›
                                     </button>
+
+                                    {/* Dot Indicators */}
+                                    <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-1.5 rounded-full bg-slate-950/40 px-3 py-1.5 backdrop-blur-sm">
+                                        {safeImages.map((_, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setCurrentImageIndex(idx)}
+                                                className={`h-1.5 w-1.5 rounded-full transition-all ${
+                                                    idx === currentImageIndex ? 'bg-white w-3' : 'bg-white/50'
+                                                }`}
+                                                aria-label={`Ảnh ${idx + 1}`}
+                                            />
+                                        ))}
+                                    </div>
                                 </>
                             )}
                         </section>

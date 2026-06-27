@@ -117,7 +117,7 @@ const ChatWidget = () => {
             {isOpen && (
                 <div className="mb-4 flex h-[450px] w-[350px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl transition-all duration-300">
                     {/* Header */}
-                    <div className="flex items-center gap-3 bg-gradient-to-r from-orange-500 to-red-500 px-4 py-4 text-white">
+                    <div className="flex items-center gap-3 bg-gradient-to-r from-brand-red to-rose-600 px-4 py-4 text-white">
                         <div className="relative">
                             {supportAgent?.image ? (
                                 <img src={supportAgent.image} alt="" className="h-10 w-10 rounded-full border border-white/20 object-cover" />
@@ -156,7 +156,7 @@ const ChatWidget = () => {
                                     <div key={msg._id || Math.random()} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
                                             isMe 
-                                                ? 'bg-orange-500 text-white rounded-br-none' 
+                                                ? 'bg-brand-red text-white rounded-br-none shadow-md shadow-brand-red/10' 
                                                 : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                         }`}>
                                             {/* Fix Bug 7: Render safely as text node to prevent Stored XSS */}
@@ -180,11 +180,11 @@ const ChatWidget = () => {
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             placeholder="Nhập tin nhắn..."
-                            className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-800 outline-none focus:border-orange-500 focus:bg-white"
+                            className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-800 outline-none focus:border-brand-red focus:bg-white focus:ring-4 focus:ring-brand-red/5 transition-all"
                         />
                         <button
                             type="submit"
-                            className="grid h-9 w-9 place-items-center rounded-full bg-orange-500 text-white hover:bg-orange-600 active:scale-95 transition"
+                            className="grid h-9 w-9 place-items-center rounded-full bg-brand-red text-white hover:bg-brand-red/90 active:scale-95 transition"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transform rotate-90" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -197,7 +197,7 @@ const ChatWidget = () => {
             {/* Chat Bubble Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/30 hover:scale-105 active:scale-95 transition"
+                className="relative grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-red to-rose-600 text-white shadow-lg shadow-brand-red/30 hover:scale-105 active:scale-95 transition"
                 aria-label="Mở chat hỗ trợ"
             >
                 {isOpen ? (

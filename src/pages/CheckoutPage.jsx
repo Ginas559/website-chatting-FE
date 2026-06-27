@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ArrowLeftOutlined, LoadingOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { checkoutOrderApi } from '../util/api';
+import { checkoutOrderApi, getUserProfileApi } from '../util/api';
 import { fetchCart, getCartSnapshot, resetCartCache } from '../util/cart';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -97,6 +97,36 @@ const CheckoutPage = () => {
         return items.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0);
     }, [items]);
 
+    const couponCode = useMemo(() => {
+        return location.state?.couponCode || '';
+    }, [location.state?.couponCode]);
+
+    const [coupons, setCoupons] = useState([]);
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        getUserProfileApi()
+            .then((res) => {
+                if (res?.user?.rewardCoupons) {
+                    setCoupons(res.user.rewardCoupons);
+                }
+            })
+            .catch(() => {});
+    }, [isAuthenticated]);
+
+    const appliedCoupon = useMemo(() => {
+        if (!couponCode || coupons.length === 0) return null;
+        return coupons.find((c) => c.code.toUpperCase() === couponCode.toUpperCase());
+    }, [couponCode, coupons]);
+
+    const discountAmount = useMemo(() => {
+        if (!appliedCoupon) return 0;
+        return Math.round(subtotal * (appliedCoupon.discountPercent / 100));
+    }, [appliedCoupon, subtotal]);
+
+    const finalTotalAmount = useMemo(() => {
+        return Math.max(0, subtotal - discountAmount);
+    }, [subtotal, discountAmount]);
+
     useEffect(() => {
         if (!isAuthenticated) {
             navigate('/login');
@@ -182,7 +212,8 @@ const CheckoutPage = () => {
                     quantity: directItem.quantity,
                     color: directItem.snapshot?.color,
                     capacity: directItem.snapshot?.capacity
-                } : undefined
+                } : undefined,
+                couponCode: couponCode || undefined
             });
 
             if (response?.errCode !== 0 || !response?.data) {
@@ -473,6 +504,12 @@ const CheckoutPage = () => {
                                         <span>Tạm tính</span>
                                         <span className="text-[#1a1c1c]">{formatVnd(subtotal)}</span>
                                     </div>
+                                    {discountAmount > 0 && (
+                                        <div className="flex items-center justify-between text-brand-red">
+                                            <span>Giảm giá ({appliedCoupon?.code})</span>
+                                            <span>-{formatVnd(discountAmount)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between text-xs text-slate-400">
                                         <span>Phí vận chuyển</span>
                                         <span className="text-emerald-600 font-bold">Miễn phí</span>
@@ -480,7 +517,7 @@ const CheckoutPage = () => {
                                     <hr className="border-slate-100" />
                                     <div className="flex items-center justify-between text-base font-black text-[#1a1c1c] pt-1">
                                         <span>Tổng cộng</span>
-                                        <span className="text-brand-red text-lg">{formatVnd(subtotal)}</span>
+                                        <span className="text-brand-red text-lg">{formatVnd(finalTotalAmount)}</span>
                                     </div>
                                 </div>
 

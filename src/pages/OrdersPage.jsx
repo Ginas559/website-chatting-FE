@@ -589,28 +589,28 @@ const OrdersPage = () => {
                         {viewMode === 'history' ? (
                             <div className="space-y-6">
                                 {/* Horizontal Scrolling Status Tabs */}
-                                <div className="relative border-b border-slate-100 pb-3">
-                                    <div className="pointer-events-none absolute left-0 top-0 z-10 flex h-10 w-10 items-center justify-start bg-gradient-to-r from-white via-white/80 to-transparent">
-                                        <button
-                                            type="button"
-                                            onClick={() => scrollStatusTabs(-1)}
-                                            className="pointer-events-auto grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-base leading-none text-slate-400 shadow-sm transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
-                                            aria-label="Lướt trạng thái sang trái"
-                                        >
-                                            ‹
-                                        </button>
-                                    </div>
-                                    <div className="pointer-events-none absolute right-0 top-0 z-10 flex h-10 w-10 items-center justify-end bg-gradient-to-l from-white via-white/80 to-transparent">
-                                        <button
-                                            type="button"
-                                            onClick={() => scrollStatusTabs(1)}
-                                            className="pointer-events-auto grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-base leading-none text-slate-400 shadow-sm transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
-                                            aria-label="Lướt trạng thái sang phải"
-                                        >
-                                            ›
-                                        </button>
-                                    </div>
-                                    <div ref={statusTabsRef} className="flex gap-2 overflow-x-auto px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                <div className="relative pb-3">
+                                    {/* Left Arrow Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => scrollStatusTabs(-1)}
+                                        className="absolute left-1 top-[6px] z-10 grid h-8 w-8 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-brand-red transition active:scale-95"
+                                        aria-label="Lướt trạng thái sang trái"
+                                    >
+                                        ‹
+                                    </button>
+
+                                    {/* Right Arrow Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => scrollStatusTabs(1)}
+                                        className="absolute right-1 top-[6px] z-10 grid h-8 w-8 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-brand-red transition active:scale-95"
+                                        aria-label="Lướt trạng thái sang phải"
+                                    >
+                                        ›
+                                    </button>
+
+                                    <div ref={statusTabsRef} className="bg-slate-100 p-1.5 rounded-2xl flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-11">
                                         {STATUS_OPTIONS.map((option) => {
                                             const isActive = status === option.value;
                                             return (
@@ -618,10 +618,10 @@ const OrdersPage = () => {
                                                     key={option.value || 'all'}
                                                     type="button"
                                                     onClick={() => changeStatus(option.value)}
-                                                    className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-bold transition-all ${
+                                                    className={`whitespace-nowrap rounded-xl px-5 py-2.5 text-xs font-bold transition-all ${
                                                         isActive
-                                                            ? 'border-brand-red bg-brand-red/5 text-brand-red shadow-sm'
-                                                            : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+                                                            ? 'bg-white text-brand-red shadow-sm'
+                                                            : 'text-slate-500 hover:bg-white/40 hover:text-slate-900'
                                                     }`}
                                                 >
                                                     {option.label}
@@ -789,106 +789,7 @@ const OrdersPage = () => {
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
-                                        {/* Status Header Overview */}
-                                        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-400">
-                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                                    <span className="font-bold text-slate-900 text-sm">Mã đơn: #{selectedOrder.orderCode}</span>
-                                                    <span>&bull;</span>
-                                                    <span>Ngày đặt: {formatDateTime(selectedOrder.createdAt)}</span>
-                                                </div>
-                                                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[selectedOrder.status] || 'bg-slate-100 text-slate-600'}`}>
-                                                    {getOrderStatusLabel(selectedOrder)}
-                                                </span>
-                                            </div>
-
-                                            {selectedOrder.status === 'CANCEL_REQUESTED' && (
-                                                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
-                                                    <div className="text-sm font-bold text-amber-900">Yêu cầu hủy đơn hàng đang chờ phản hồi</div>
-                                                    <p className="mt-1 text-xs text-amber-700 leading-relaxed">
-                                                        Lý do hủy đơn: {getLatestStatusEntry(selectedOrder, 'CANCEL_REQUESTED')?.note || 'Chưa cung cấp lý do.'}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            {selectedOrder.status === 'CANCELLED' && (
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-                                                    <div className="text-sm font-bold text-slate-900">Đơn hàng đã được hủy bỏ</div>
-                                                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                                                        Lý do hủy đơn: {getLatestStatusEntry(selectedOrder, 'CANCELLED')?.note || 'Chưa cung cấp lý do.'}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            {(!['CANCELLED', 'CANCEL_REQUESTED'].includes(selectedOrder.status)) && hasRejectedCancelRequest(selectedOrder) && (
-                                                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left space-y-1">
-                                                    <div className="text-sm font-bold text-rose-900">Yêu cầu hủy đơn hàng bị từ chối</div>
-                                                    <p className="text-xs text-rose-700 leading-relaxed">
-                                                        Lý do từ chối: {getCancelRequestRejectionEntry(selectedOrder)?.note || 'Đơn hàng đã vào khâu chuẩn bị không thể hủy.'}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            {/* Products In Order */}
-                                            <div className="divide-y divide-slate-100">
-                                                {(selectedOrder.items || []).map((item) => (
-                                                    <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between first:pt-0 last:pb-0">
-                                                        <div className="flex min-w-0 items-center gap-4">
-                                                            <div className="h-16 w-16 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center p-1 shrink-0">
-                                                                <img 
-                                                                    src={item.snapshot?.image} 
-                                                                    alt={item.snapshot?.name} 
-                                                                    className="max-h-full max-w-full object-contain" 
-                                                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/100x100?text=No+Img'; }}
-                                                                />
-                                                            </div>
-                                                            <div className="min-w-0 text-left space-y-1">
-                                                                    <div className="text-sm font-bold text-slate-900 leading-snug break-words break-all">{item.snapshot?.name}</div>
-                                                                    {(item.snapshot?.color || item.snapshot?.capacity) && (
-                                                                        <div className="flex flex-wrap gap-1 text-[9px] text-slate-400 font-extrabold uppercase">
-                                                                            {item.snapshot.color && <span className="rounded border border-slate-200/50 bg-slate-50 px-1.5 py-0.2">Màu: {item.snapshot.color}</span>}
-                                                                            {item.snapshot.capacity && <span className="rounded border border-slate-200/50 bg-slate-50 px-1.5 py-0.2">GB: {item.snapshot.capacity}</span>}
-                                                                        </div>
-                                                                    )}
-                                                                <div className="text-xs font-bold text-brand-red">{formatVnd(item.lineTotal)}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-4 justify-between sm:justify-end">
-                                                            <div className="text-xs font-bold text-slate-400 uppercase">Số lượng: {item.quantity}</div>
-                                                            {selectedOrder.status === 'DELIVERED' && item.snapshot?.slug && (
-                                                                <Link
-                                                                    to={`/product/${item.snapshot.slug}#reviews`}
-                                                                    className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3.5 text-xs font-bold text-amber-700 hover:bg-amber-100"
-                                                                >
-                                                                    Đánh giá
-                                                                </Link>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {canRepayVnpayOrder(selectedOrder) && (
-                                                <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 mt-3">
-                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-left">
-                                                        <div className="space-y-1">
-                                                            <div className="text-sm font-bold text-amber-900">Đơn hàng đang chờ thanh toán VNPay</div>
-                                                            <p className="text-xs text-amber-700 leading-relaxed">Nhấp để liên kết trực tiếp cổng thanh toán VNPay và hoàn tất giao dịch.</p>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => repayVnpayOrder(selectedOrder)}
-                                                            disabled={mutating}
-                                                            className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-red px-4 text-xs font-bold text-white shadow-md shadow-brand-red/10 hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
-                                                        >
-                                                            {mutating ? 'Đang khởi tạo...' : 'Thanh toán ngay'}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Stepper Timeline Progress */}
+                                        {/* Stepper Timeline Progress (Figma Bento Large) */}
                                         <div className="rounded-3xl border border-slate-200 bg-white px-5 py-8 shadow-sm">
                                             <div className="relative">
                                                 <div className="absolute left-[10%] right-[10%] top-4 hidden h-1 bg-slate-100 sm:block" />
@@ -945,25 +846,128 @@ const OrdersPage = () => {
                                             )}
                                         </div>
 
-                                        {/* Customer and billing split view */}
-                                        <div className="grid gap-6 lg:grid-cols-2 text-left">
-                                            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                                                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 font-sans border-b border-slate-100 pb-3">Thông tin nhận hàng</h3>
-                                                <div className="mt-4 divide-y divide-slate-100 text-xs font-semibold text-slate-500">
-                                                    <div className="flex justify-between gap-3 py-3"><span className="text-slate-400">Họ và tên</span><span className="font-bold text-slate-800">{selectedOrder.shippingInfo?.fullName}</span></div>
-                                                    <div className="flex justify-between gap-3 py-3"><span className="text-slate-400">Số điện thoại</span><span className="font-bold text-slate-800">{selectedOrder.shippingInfo?.phone}</span></div>
-                                                    <div className="flex justify-between gap-3 py-3"><span className="text-slate-400">Địa chỉ cụ thể</span><span className="font-bold text-slate-800 text-right break-words break-all">{selectedOrder.shippingInfo?.address}</span></div>
-                                                    <div className="flex justify-between gap-3 py-3"><span className="text-slate-400">Ghi chú giao hàng</span><span className="font-bold text-slate-800 text-right">{selectedOrder.shippingInfo?.note || 'Không có ghi chú'}</span></div>
+                                        {/* Bento Grid layout for detail content (Figma Bento Left/Right) */}
+                                        <div className="grid gap-6 lg:grid-cols-12 lg:items-start text-left">
+                                            {/* Left Column: Product details */}
+                                            <div className="lg:col-span-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+                                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 text-xs font-semibold text-slate-400">
+                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                        <span className="font-bold text-slate-900 text-sm">Mã đơn: #{selectedOrder.orderCode}</span>
+                                                        <span>&bull;</span>
+                                                        <span>Ngày đặt: {formatDateTime(selectedOrder.createdAt)}</span>
+                                                    </div>
+                                                    <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[selectedOrder.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                        {getOrderStatusLabel(selectedOrder)}
+                                                    </span>
                                                 </div>
+
+                                                {selectedOrder.status === 'CANCEL_REQUESTED' && (
+                                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
+                                                        <div className="text-sm font-bold text-amber-900">Yêu cầu hủy đơn hàng đang chờ phản hồi</div>
+                                                        <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                                                            Lý do hủy đơn: {getLatestStatusEntry(selectedOrder, 'CANCEL_REQUESTED')?.note || 'Chưa cung cấp lý do.'}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {selectedOrder.status === 'CANCELLED' && (
+                                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                                                        <div className="text-sm font-bold text-slate-900">Đơn hàng đã được hủy bỏ</div>
+                                                        <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                                                            Lý do hủy đơn: {getLatestStatusEntry(selectedOrder, 'CANCELLED')?.note || 'Chưa cung cấp lý do.'}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {(!['CANCELLED', 'CANCEL_REQUESTED'].includes(selectedOrder.status)) && hasRejectedCancelRequest(selectedOrder) && (
+                                                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left space-y-1">
+                                                        <div className="text-sm font-bold text-rose-900">Yêu cầu hủy đơn hàng bị từ chối</div>
+                                                        <p className="text-xs text-rose-700 leading-relaxed">
+                                                            Lý do từ chối: {getCancelRequestRejectionEntry(selectedOrder)?.note || 'Đơn hàng đã vào khâu chuẩn bị không thể hủy.'}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                <div className="divide-y divide-slate-100">
+                                                    {(selectedOrder.items || []).map((item) => (
+                                                        <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between first:pt-0 last:pb-0">
+                                                            <div className="flex min-w-0 items-center gap-4">
+                                                                <div className="h-16 w-16 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center p-1 shrink-0">
+                                                                    <img 
+                                                                        src={item.snapshot?.image} 
+                                                                        alt={item.snapshot?.name} 
+                                                                        className="max-h-full max-w-full object-contain" 
+                                                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/100x100?text=No+Img'; }}
+                                                                    />
+                                                                </div>
+                                                                <div className="min-w-0 text-left space-y-1">
+                                                                    <div className="text-sm font-bold text-slate-900 leading-snug break-words break-all">{item.snapshot?.name}</div>
+                                                                    {(item.snapshot?.color || item.snapshot?.capacity) && (
+                                                                        <div className="flex flex-wrap gap-1 text-[9px] text-slate-400 font-extrabold uppercase">
+                                                                            {item.snapshot.color && <span className="rounded border border-slate-200/50 bg-slate-50 px-1.5 py-0.2">Màu: {item.snapshot.color}</span>}
+                                                                            {item.snapshot.capacity && <span className="rounded border border-slate-200/50 bg-slate-50 px-1.5 py-0.2">GB: {item.snapshot.capacity}</span>}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="text-xs font-bold text-brand-red">{formatVnd(item.lineTotal)}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 justify-between sm:justify-end">
+                                                                <div className="text-xs font-bold text-slate-400 uppercase">Số lượng: {item.quantity}</div>
+                                                                {selectedOrder.status === 'DELIVERED' && item.snapshot?.slug && (
+                                                                    <Link
+                                                                        to={`/product/${item.snapshot.slug}#reviews`}
+                                                                        className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3.5 text-xs font-bold text-amber-700 hover:bg-amber-100"
+                                                                    >
+                                                                        Đánh giá
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {canRepayVnpayOrder(selectedOrder) && (
+                                                    <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 mt-3">
+                                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-left">
+                                                            <div className="space-y-1">
+                                                                <div className="text-sm font-bold text-amber-900">Đơn hàng đang chờ thanh toán VNPay</div>
+                                                                <p className="text-xs text-amber-700 leading-relaxed">Nhấp để liên kết trực tiếp cổng thanh toán VNPay và hoàn tất giao dịch.</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => repayVnpayOrder(selectedOrder)}
+                                                                disabled={mutating}
+                                                                className="inline-flex h-10 items-center justify-center rounded-xl bg-brand-red px-4 text-xs font-bold text-white shadow-md shadow-brand-red/10 hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
+                                                            >
+                                                                {mutating ? 'Đang khởi tạo...' : 'Thanh toán ngay'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                                                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 font-sans border-b border-slate-100 pb-3">Thông tin thanh toán</h3>
-                                                <div className="mt-4 divide-y divide-slate-100 text-xs font-semibold text-slate-500">
-                                                    <div className="flex justify-between py-3"><span className="text-slate-400">Tổng chủng loại mặt hàng</span><span className="font-bold text-slate-800">{selectedOrder.items?.length || 0}</span></div>
-                                                    <div className="flex justify-between py-3"><span className="text-slate-400">Hình thức thanh toán</span><span className="font-bold text-slate-800">{selectedOrder.paymentMethod}</span></div>
-                                                    <div className="flex justify-between py-3"><span className="text-slate-400">Trạng thái thanh toán</span><span className="font-bold text-slate-800">{getPaymentStatusLabel(selectedOrder)}</span></div>
-                                                    <div className="flex justify-between py-3"><span className="text-slate-400 text-sm">Tổng cộng thanh toán</span><span className="font-black text-brand-red text-base">{formatVnd(selectedOrder.totalAmount)}</span></div>
+                                            {/* Right Column: Info Cards stacked */}
+                                            <div className="lg:col-span-4 space-y-6">
+                                                {/* Shipping Info Card */}
+                                                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                                                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 font-sans border-b border-slate-100 pb-3">Thông tin nhận hàng</h3>
+                                                    <div className="mt-4 divide-y divide-slate-100 text-xs font-semibold text-slate-500">
+                                                        <div className="flex justify-between gap-3 py-3"><span className="text-slate-400 font-bold">Họ và tên</span><span className="font-bold text-slate-800">{selectedOrder.shippingInfo?.fullName}</span></div>
+                                                        <div className="flex justify-between gap-3 py-3"><span className="text-slate-400 font-bold">Số điện thoại</span><span className="font-bold text-slate-800">{selectedOrder.shippingInfo?.phone}</span></div>
+                                                        <div className="flex justify-between gap-3 py-3"><span className="text-slate-400 font-bold">Địa chỉ cụ thể</span><span className="font-bold text-slate-800 text-right break-words break-all">{selectedOrder.shippingInfo?.address}</span></div>
+                                                        <div className="flex justify-between gap-3 py-3"><span className="text-slate-400 font-bold">Ghi chú giao hàng</span><span className="font-bold text-slate-800 text-right">{selectedOrder.shippingInfo?.note || 'Không có ghi chú'}</span></div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Payment Info Card */}
+                                                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                                                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 font-sans border-b border-slate-100 pb-3">Thông tin thanh toán</h3>
+                                                    <div className="mt-4 divide-y divide-slate-100 text-xs font-semibold text-slate-500">
+                                                        <div className="flex justify-between py-3"><span className="text-slate-400 font-bold">Tổng chủng loại mặt hàng</span><span className="font-bold text-slate-800">{selectedOrder.items?.length || 0}</span></div>
+                                                        <div className="flex justify-between py-3"><span className="text-slate-400 font-bold">Hình thức thanh toán</span><span className="font-bold text-slate-800">{selectedOrder.paymentMethod}</span></div>
+                                                        <div className="flex justify-between py-3"><span className="text-slate-400 font-bold">Trạng thái thanh toán</span><span className="font-bold text-slate-800">{getPaymentStatusLabel(selectedOrder)}</span></div>
+                                                        <div className="flex justify-between py-3"><span className="text-slate-400 font-bold text-sm">Tổng cộng thanh toán</span><span className="font-black text-brand-red text-base">{formatVnd(selectedOrder.totalAmount)}</span></div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

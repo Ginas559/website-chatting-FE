@@ -669,8 +669,8 @@ const StoreHomePage = () => {
                                     totalPages={1}
                                     onPrev={() => {}}
                                     onNext={() => {}}
-                                    metricLabel="Đã xem"
-                                    metricKey="id"
+                                    metricLabel="Lượt xem"
+                                    metricKey="views"
                                     metricTone="text-brand-gray"
                                     isFavorite={isFavorite}
                                     loadingMap={loadingMap}
