@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { logoutUser } from '../redux/slices/authSlice';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { ArrowLeftOutlined, LoadingOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { checkoutOrderApi } from '../util/api';
 import { fetchCart, getCartSnapshot, resetCartCache } from '../util/cart';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     style: 'currency',
@@ -55,7 +56,7 @@ const validateForm = (values) => {
 
 const CheckoutPage = () => {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
+    const location = useLocation();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const [cart, setCart] = useState(() => getCartSnapshot());
     const [form, setForm] = useState(() => ({
@@ -71,10 +72,30 @@ const CheckoutPage = () => {
     const [createdOrder, setCreatedOrder] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('COD');
 
-    const items = Array.isArray(cart.items) ? cart.items : [];
-    const subtotal = useMemo(() => Number(cart.subtotal || 0), [cart.subtotal]);
-    const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
-    const memberTag = memberName.charAt(0).toUpperCase() || 'M';
+    // Extract productIds from location.state
+    const productIds = useMemo(() => {
+        return location.state?.productIds || [];
+    }, [location.state?.productIds]);
+
+    const directItem = useMemo(() => {
+        return location.state?.directItem || null;
+    }, [location.state?.directItem]);
+
+    const items = useMemo(() => {
+        if (directItem) {
+            return [directItem];
+        }
+        const rawItems = Array.isArray(cart.items) ? cart.items : [];
+        if (productIds.length > 0) {
+            const productIdsStr = productIds.map(String);
+            return rawItems.filter((item) => productIdsStr.includes(String(item.productId)));
+        }
+        return rawItems;
+    }, [cart.items, productIds, directItem]);
+
+    const subtotal = useMemo(() => {
+        return items.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0);
+    }, [items]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -109,11 +130,6 @@ const CheckoutPage = () => {
             isMounted = false;
         };
     }, [isAuthenticated, navigate]);
-
-    const onLogout = async () => {
-        await dispatch(logoutUser());
-        navigate('/login');
-    };
 
     const updateForm = (field) => (event) => {
         setForm((current) => ({
@@ -160,6 +176,13 @@ const CheckoutPage = () => {
                     city: form.city.trim(),
                     note: form.note.trim(),
                 },
+                productIds: productIds.length > 0 ? productIds : undefined,
+                directItem: directItem ? {
+                    productId: directItem.productId,
+                    quantity: directItem.quantity,
+                    color: directItem.snapshot?.color,
+                    capacity: directItem.snapshot?.capacity
+                } : undefined
             });
 
             if (response?.errCode !== 0 || !response?.data) {
@@ -177,7 +200,7 @@ const CheckoutPage = () => {
                 return;
             }
 
-            resetCartCache();
+            await fetchCart().catch(() => {});
             setCart(getCartSnapshot());
             setCreatedOrder(response.data);
         } catch (error) {
@@ -189,81 +212,59 @@ const CheckoutPage = () => {
 
     if (createdOrder) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 px-4 py-10 text-slate-900">
-                <div className="mx-auto max-w-3xl rounded-[32px] border border-emerald-200 bg-white p-8 text-left shadow-sm">
-                    <div className="text-sm font-black uppercase tracking-[0.22em] text-emerald-600">Order Created</div>
-                    <h1 className="mt-3 text-3xl font-black">Đặt hàng thành công</h1>
-                    <p className="mt-3 text-slate-600">Shop đã ghi nhận đơn hàng của bạn. Bạn có thể theo dõi trạng thái đơn hàng sau khi đặt.</p>
+            <div className="min-h-screen bg-slate-50 text-slate-900">
+                <Header />
+                <main className="mx-auto max-w-3xl px-4 py-16 text-left">
+                    <div className="rounded-[32px] border border-border-color bg-white p-8 shadow-sm">
+                        <div className="text-sm font-black uppercase tracking-[0.22em] text-emerald-600">Order Created</div>
+                        <h1 className="mt-3 text-3xl font-black">Đặt hàng thành công</h1>
+                        <p className="mt-3 text-slate-600">Shop đã ghi nhận đơn hàng của bạn. Bạn có thể theo dõi trạng thái đơn hàng sau khi đặt.</p>
 
-                    <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                        <div className="flex items-center justify-between gap-4 text-sm text-slate-600">
-                            <span>Mã đơn hàng</span>
-                            <span className="font-bold text-slate-900">{createdOrder.orderCode}</span>
+                        <div className="mt-6 rounded-3xl border border-border-color bg-slate-50 p-5">
+                            <div className="flex items-center justify-between gap-4 text-sm text-slate-600">
+                                <span>Mã đơn hàng</span>
+                                <span className="font-bold text-slate-900">{createdOrder.orderCode}</span>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-4 text-sm text-slate-600">
+                                <span>Phương thức</span>
+                                <span className="font-bold text-slate-900">{createdOrder.paymentMethod}</span>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-4 text-sm text-slate-600">
+                                <span>Tổng tiền</span>
+                                <span className="font-bold text-brand-red">{formatVnd(createdOrder.totalAmount)}</span>
+                            </div>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-4 text-sm text-slate-600">
-                            <span>Phương thức</span>
-                            <span className="font-bold text-slate-900">{createdOrder.paymentMethod}</span>
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-4 text-sm text-slate-600">
-                            <span>Tổng tiền</span>
-                            <span className="font-bold text-red-600">{formatVnd(createdOrder.totalAmount)}</span>
+
+                        <div className="mt-6 flex flex-wrap gap-3">
+                            <Link to="/" className="rounded-2xl bg-brand-red px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-red/20 transition hover:bg-brand-red-hover">
+                                Về trang chủ
+                            </Link>
+                            <Link to="/search" className="rounded-2xl border border-border-color bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                Tiếp tục mua sắm
+                            </Link>
+                            <Link to="/orders" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                Xem đơn hàng
+                            </Link>
                         </div>
                     </div>
-
-                    <div className="mt-6 flex flex-wrap gap-3">
-                        <Link to="/" className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700">
-                            Về trang chủ
-                        </Link>
-                        <Link to="/search" className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                            Tiếp tục mua sắm
-                        </Link>
-                        <Link to="/orders" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                            Xem đơn hàng
-                        </Link>
-                    </div>
-                </div>
+                </main>
+                <Footer />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
-            <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
-                <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
-                    <Link to="/" className="inline-flex items-center gap-3 whitespace-nowrap font-black text-slate-900">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-red-500 to-red-400 text-white shadow-lg shadow-red-500/20">S</span>
-                        <span className="text-xl">SmartZone Store</span>
-                    </Link>
-
-                    <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                        <ShoppingCartOutlined />
-                        Giỏ hàng
-                    </Link>
-
-                    <div className="ml-auto flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                            <div className="grid h-10 w-10 place-items-center rounded-full bg-red-100 font-bold text-red-700">{memberTag}</div>
-                            <div>
-                                <div className="text-xs text-slate-500">Thanh toán bởi</div>
-                                <div className="font-bold text-slate-900">{memberName}</div>
-                            </div>
-                        </div>
-                        <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={onLogout} type="button">
-                            <LogoutOutlined />
-                            Đăng xuất
-                        </button>
-                    </div>
-                </div>
-            </header>
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <Header />
 
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 text-left">
                     <div>
-                        <div className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">Checkout</div>
+                        <div className="text-sm font-black uppercase tracking-[0.22em] text-brand-red">Checkout</div>
                         <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">Thanh toán đơn hàng</h1>
                         <p className="mt-2 text-slate-500">Kiểm tra thông tin nhận hàng và phương thức thanh toán trước khi đặt đơn.</p>
                     </div>
-                    <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-border-color bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                         <ArrowLeftOutlined />
                         Quay lại giỏ hàng
                     </Link>
@@ -276,42 +277,42 @@ const CheckoutPage = () => {
                 ) : null}
 
                 <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
-                    <form onSubmit={submitOrder} className="rounded-[32px] border border-slate-200 bg-white p-6 text-left shadow-sm">
+                    <form onSubmit={submitOrder} className="rounded-[32px] border border-border-color bg-white p-6 text-left shadow-sm">
                         <h2 className="text-xl font-bold text-slate-900">Thông tin nhận hàng</h2>
 
                         <div className="mt-5 grid gap-5 md:grid-cols-2">
                             <label className="block">
                                 <span className="text-sm font-semibold text-slate-700">Họ tên người nhận</span>
-                                <input value={form.fullName} onChange={updateForm('fullName')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="Nguyễn Văn A" />
+                                <input value={form.fullName} onChange={updateForm('fullName')} className="mt-2 w-full rounded-2xl border border-border-color bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand-red focus:bg-white" placeholder="Nguyễn Văn A" />
                                 {errors.fullName ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.fullName}</span> : null}
                             </label>
 
                             <label className="block">
                                 <span className="text-sm font-semibold text-slate-700">Số điện thoại</span>
-                                <input value={form.phone} onChange={updateForm('phone')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="0900000000" />
+                                <input value={form.phone} onChange={updateForm('phone')} className="mt-2 w-full rounded-2xl border border-border-color bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand-red focus:bg-white" placeholder="0900000000" />
                                 {errors.phone ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.phone}</span> : null}
                             </label>
 
                             <label className="block md:col-span-2">
                                 <span className="text-sm font-semibold text-slate-700">Địa chỉ nhận hàng</span>
-                                <input value={form.address} onChange={updateForm('address')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="Số nhà, đường, phường/xã, quận/huyện" />
+                                <input value={form.address} onChange={updateForm('address')} className="mt-2 w-full rounded-2xl border border-border-color bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand-red focus:bg-white" placeholder="Số nhà, đường, phường/xã, quận/huyện" />
                                 {errors.address ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.address}</span> : null}
                             </label>
 
                             <label className="block">
                                 <span className="text-sm font-semibold text-slate-700">Tỉnh/thành phố</span>
-                                <input value={form.city} onChange={updateForm('city')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="TP. Hồ Chí Minh" />
+                                <input value={form.city} onChange={updateForm('city')} className="mt-2 w-full rounded-2xl border border-border-color bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand-red focus:bg-white" placeholder="TP. Hồ Chí Minh" />
                                 {errors.city ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.city}</span> : null}
                             </label>
 
                             <label className="block md:col-span-2">
                                 <span className="text-sm font-semibold text-slate-700">Ghi chú</span>
-                                <textarea value={form.note} onChange={updateForm('note')} rows={4} className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="Ví dụ: giao giờ hành chính, gọi trước khi giao..." />
+                                <textarea value={form.note} onChange={updateForm('note')} rows={4} className="mt-2 w-full resize-none rounded-2xl border border-border-color bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand-red focus:bg-white" placeholder="Ví dụ: giao giờ hành chính, gọi trước khi giao..." />
                                 {errors.note ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.note}</span> : null}
                             </label>
                         </div>
 
-                        <div className="mt-6 rounded-3xl border border-orange-100 bg-orange-50 px-5 py-4 text-sm text-slate-700">
+                        <div className="mt-6 rounded-3xl border border-brand-red/10 bg-brand-red/5 px-5 py-4 text-sm text-slate-700">
                             <div className="font-bold text-slate-900">Phương thức thanh toán</div>
 
                             <label className="mt-4 flex cursor-pointer items-start gap-3">
@@ -321,7 +322,7 @@ const CheckoutPage = () => {
                                     value="COD"
                                     checked={paymentMethod === 'COD'}
                                     onChange={() => setPaymentMethod('COD')}
-                                    className="mt-1 accent-red-600"
+                                    className="mt-1 accent-brand-red"
                                 />
                                 <span>
                                     <span className="block font-bold text-slate-900">COD - Thanh toán khi nhận hàng</span>
@@ -336,7 +337,7 @@ const CheckoutPage = () => {
                                     value="VNPAY"
                                     checked={paymentMethod === 'VNPAY'}
                                     onChange={() => setPaymentMethod('VNPAY')}
-                                    className="mt-1 accent-red-600"
+                                    className="mt-1 accent-brand-red"
                                 />
                                 <span>
                                     <span className="block font-bold text-slate-900">VNPay - Thanh toán online</span>
@@ -346,29 +347,35 @@ const CheckoutPage = () => {
                         </div>
                     </form>
 
-                    <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 text-left shadow-sm">
+                    <aside className="h-fit rounded-[32px] border border-border-color bg-white p-5 text-left shadow-sm">
                         <h2 className="text-xl font-bold text-slate-900">Tóm tắt đơn hàng</h2>
 
                         {loading ? (
-                            <div className="mt-5 rounded-3xl border border-dashed border-slate-200 p-8 text-center text-sm font-semibold text-slate-500">
+                            <div className="mt-5 rounded-3xl border border-dashed border-border-color p-8 text-center text-sm font-semibold text-slate-500">
                                 <LoadingOutlined className="mr-2" /> Đang tải giỏ hàng...
                             </div>
                         ) : items.length ? (
                             <>
                                 <div className="mt-5 space-y-3">
                                     {items.map((item) => (
-                                        <div key={item.cartItemId || item.productId} className="flex gap-3 rounded-3xl border border-slate-100 bg-slate-50 p-3">
+                                        <div key={item.cartItemId || item.productId} className="flex gap-3 rounded-3xl border border-border-color bg-slate-50 p-3">
                                             <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-16 w-14 rounded-2xl object-cover" />
                                             <div className="min-w-0 flex-1">
-                                                <div className="truncate text-sm font-bold text-slate-900">{item.snapshot?.name}</div>
-                                                <div className="mt-1 text-xs text-slate-500">SL: {item.quantity}</div>
-                                                <div className="mt-1 text-sm font-semibold text-red-600">{formatVnd(item.lineTotal)}</div>
+                                                <div className="text-sm font-bold text-slate-900 leading-snug break-words">{item.snapshot?.name}</div>
+                                                {(item.snapshot?.color || item.snapshot?.capacity) && (
+                                                    <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-500 font-bold">
+                                                        {item.snapshot.color && <span className="rounded bg-slate-200/60 px-1.5 py-0.5">{item.snapshot.color}</span>}
+                                                        {item.snapshot.capacity && <span className="rounded bg-slate-200/60 px-1.5 py-0.5">{item.snapshot.capacity}</span>}
+                                                    </div>
+                                                )}
+                                                <div className="mt-1.5 text-xs text-slate-500 font-semibold">SL: {item.quantity}</div>
+                                                <div className="mt-1 text-sm font-semibold text-brand-red">{formatVnd(item.lineTotal)}</div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="mt-5 border-t border-slate-200 pt-4">
+                                <div className="mt-5 border-t border-border-color pt-4">
                                     <div className="flex items-center justify-between text-sm text-slate-600">
                                         <span>Tạm tính</span>
                                         <span>{formatVnd(subtotal)}</span>
@@ -379,7 +386,7 @@ const CheckoutPage = () => {
                                     </div>
                                     <div className="mt-4 flex items-center justify-between text-base font-black text-slate-900">
                                         <span>Tổng thanh toán</span>
-                                        <span className="text-red-600">{formatVnd(subtotal)}</span>
+                                        <span className="text-brand-red">{formatVnd(subtotal)}</span>
                                     </div>
                                 </div>
 
@@ -387,16 +394,16 @@ const CheckoutPage = () => {
                                     type="button"
                                     onClick={submitOrder}
                                     disabled={submitting || loading || !items.length}
-                                    className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-brand-red px-4 py-3 font-semibold text-white shadow-lg shadow-brand-red/20 transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {submitting ? 'Đang xử lý...' : paymentMethod === 'VNPAY' ? 'Thanh toán qua VNPay' : 'Đặt hàng'}
                                 </button>
                             </>
                         ) : (
-                            <div className="mt-5 rounded-3xl border border-dashed border-orange-200 p-8 text-center">
-                                <ShoppingCartOutlined className="text-3xl text-orange-500" />
+                            <div className="mt-5 rounded-3xl border border-dashed border-brand-red/20 p-8 text-center">
+                                <ShoppingCartOutlined className="text-3xl text-brand-red" />
                                 <p className="mt-3 text-sm font-semibold text-slate-600">Giỏ hàng đang trống.</p>
-                                <Link to="/search" className="mt-4 inline-flex rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">
+                                <Link to="/search" className="mt-4 inline-flex rounded-2xl bg-brand-red px-4 py-2 text-sm font-semibold text-white hover:bg-brand-red-hover">
                                     Chọn sản phẩm
                                 </Link>
                             </div>
@@ -404,6 +411,7 @@ const CheckoutPage = () => {
                     </aside>
                 </div>
             </main>
+            <Footer />
         </div>
     );
 };

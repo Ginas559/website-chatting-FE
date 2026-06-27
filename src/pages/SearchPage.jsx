@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { HeartFilled, HeartOutlined, LoadingOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { logoutUser } from '../redux/slices/authSlice';
+import { HeartFilled, HeartOutlined, LoadingOutlined } from '@ant-design/icons';
 import { getProductCategoriesApi, searchProductsApi } from '../util/api';
-import { fetchCart, getCartCount } from '../util/cart';
 import useFavorites from '../hooks/useFavorites';
 import { getProductId } from '../util/productId';
 import StatusAlert from '../components/common/StatusAlert';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const priceRanges = [
     { label: '0đ - 2.000.000đ', minPrice: 0, maxPrice: 2000000 },
@@ -28,15 +27,22 @@ const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     maximumFractionDigits: 0,
 });
 
-const getFiltersFromSearchParams = (params) => ({
-    q: params.get('q') || '',
-    categoryIds: params.get('categoryIds')?.split(',').filter(Boolean) || [],
-    minPrice: params.get('minPrice') || '',
-    maxPrice: params.get('maxPrice') || '',
-    minRating: params.get('minRating') || '',
-    inStock: params.get('inStock') === 'true',
-    sort: params.get('sort') || 'latest',
-});
+const getFiltersFromSearchParams = (params) => {
+    const categoryQuery = params.get('category');
+    let categoryIds = params.get('categoryIds')?.split(',').filter(Boolean) || [];
+    if (categoryQuery && !categoryIds.includes(categoryQuery)) {
+        categoryIds = [categoryQuery, ...categoryIds];
+    }
+    return {
+        q: params.get('q') || '',
+        categoryIds,
+        minPrice: params.get('minPrice') || '',
+        maxPrice: params.get('maxPrice') || '',
+        minRating: params.get('minRating') || '',
+        inStock: params.get('inStock') === 'true',
+        sort: params.get('sort') || 'latest',
+    };
+};
 
 const SearchPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -48,7 +54,6 @@ const SearchPage = () => {
     const [hasMore, setHasMore] = useState(true);
     const [page, setPage] = useState(1);
     const [searchValue, setSearchValue] = useState(searchParams.get('q') || '');
-    const [cartCount, setCartCount] = useState(0);
 
     const searchParamsString = searchParams.toString();
     const loadMoreRef = useRef(null);
@@ -57,8 +62,6 @@ const SearchPage = () => {
     const activeQueryRef = useRef(searchParamsString);
 
     const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const { isAuthenticated, user } = useSelector((state) => state.auth);
     const { isFavorite, toggleFavorite, loadingMap } = useFavorites();
     const [favoriteNotice, setFavoriteNotice] = useState(null);
 
@@ -75,34 +78,6 @@ const SearchPage = () => {
         setPage(1);
         loadMoreLockRef.current = false;
     }, [searchParamsString]);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const syncCartCount = () => setCartCount(getCartCount());
-        const loadCartCount = async () => {
-            try {
-                await fetchCart();
-            } catch {
-                
-            } finally {
-                if (isMounted) {
-                    syncCartCount();
-                }
-            }
-        };
-
-        loadCartCount();
-
-        window.addEventListener('cart:updated', syncCartCount);
-        window.addEventListener('storage', syncCartCount);
-
-        return () => {
-            isMounted = false;
-            window.removeEventListener('cart:updated', syncCartCount);
-            window.removeEventListener('storage', syncCartCount);
-        };
-    }, []);
 
     const updateSearchParams = (updates) => {
         const nextParams = new URLSearchParams(searchParams);
@@ -265,18 +240,6 @@ const SearchPage = () => {
         updateSearchParams({ categoryIds: nextCategoryIds });
     };
 
-    const onSubmitSearch = (event) => {
-        event.preventDefault();
-        updateSearchParams({ q: searchValue.trim() });
-    };
-
-    const onLogout = async () => {
-        await dispatch(logoutUser());
-        navigate('/login');
-    };
-
-    const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
-
     const onToggleFavorite = async (event, product) => {
         event.preventDefault();
         event.stopPropagation();
@@ -293,65 +256,7 @@ const SearchPage = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
-            <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
-                <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
-                    <Link to="/" className="inline-flex items-center gap-3 whitespace-nowrap font-black text-slate-900">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-red-500 to-red-400 text-white shadow-lg shadow-red-500/20">S</span>
-                        <span className="text-xl">SmartZone Store</span>
-                    </Link>
-
-                    <form onSubmit={onSubmitSearch} className="order-3 flex h-12 w-full flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-slate-500 shadow-sm lg:order-none lg:w-auto">
-                        <SearchOutlined />
-                        <input
-                            value={searchValue}
-                            onChange={(event) => setSearchValue(event.target.value)}
-                            placeholder="Tìm kiếm điện thoại, laptop, tablet..."
-                            className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
-                        />
-                    </form>
-
-                    <Link to="/search" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                        Trang tìm kiếm
-                    </Link>
-
-                    {isAuthenticated && (
-                        <Link to="/chat" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                            Tin nhắn
-                        </Link>
-                    )}
-
-                    <Link to="/" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                        Tin tức
-                    </Link>
-
-                    <div className="ml-auto flex flex-wrap items-center gap-3">
-                        <Link className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700" to="/cart">
-                            <ShoppingCartOutlined />
-                            <span>Giỏ hàng ({cartCount})</span>
-                        </Link>
-
-                        {isAuthenticated ? (
-                            <>
-                                <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
-                                    <div className="grid h-10 w-10 place-items-center rounded-full bg-red-100 font-bold text-red-700">{memberName.charAt(0)}</div>
-                                    <div>
-                                        <div className="text-xs text-slate-500">Chào bạn,</div>
-                                        <div className="font-bold text-slate-900">{memberName}</div>
-                                    </div>
-                                </div>
-                                <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={onLogout} type="button">
-                                    <LogoutOutlined />
-                                    <span>Đăng xuất</span>
-                                </button>
-                            </>
-                        ) : (
-                            <Link className="inline-flex items-center rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700" to="/login">
-                                Đăng nhập
-                            </Link>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <Header />
 
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
                 {favoriteNotice ? (
@@ -374,7 +279,7 @@ const SearchPage = () => {
                                 <button
                                     type="button"
                                     onClick={clearFilters}
-                                    className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                                    className="rounded-full border border-brand-red/20 bg-brand-red/5 px-3 py-2 text-xs font-semibold text-brand-red transition hover:bg-brand-red/10"
                                 >
                                     Xóa lọc
                                 </button>
@@ -387,7 +292,7 @@ const SearchPage = () => {
                                         onChange={(e) => updateSearchParams({ minPrice: e.target.value })}
                                         inputMode="numeric"
                                         placeholder="0"
-                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-red-500 focus:bg-white"
+                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-red focus:bg-white"
                                     />
                                 </label>
 
@@ -398,7 +303,7 @@ const SearchPage = () => {
                                         onChange={(e) => updateSearchParams({ maxPrice: e.target.value })}
                                         inputMode="numeric"
                                         placeholder="60000000"
-                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-red-500 focus:bg-white"
+                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-red focus:bg-white"
                                     />
                                 </label>
                             </div>
@@ -412,7 +317,7 @@ const SearchPage = () => {
                                             type="radio"
                                             checked={filters.minPrice === String(range.minPrice) && String(filters.maxPrice) === String(range.maxPrice)}
                                             onChange={() => updateSearchParams({ minPrice: String(range.minPrice), maxPrice: String(range.maxPrice) })}
-                                            className="accent-red-600"
+                                            className="accent-brand-red"
                                         />
                                         <span>{range.label}</span>
                                     </label>
@@ -425,7 +330,7 @@ const SearchPage = () => {
                             <div className="mt-4 space-y-2">
                                 {categories.map((category) => (
                                     <label key={category} className="flex items-center gap-3 rounded-2xl px-1 py-1 text-sm text-slate-700">
-                                        <input type="checkbox" checked={selectedCategories.has(category)} onChange={() => onToggleCategory(category)} className="accent-red-600" />
+                                        <input type="checkbox" checked={selectedCategories.has(category)} onChange={() => onToggleCategory(category)} className="accent-brand-red" />
                                         <span>{category}</span>
                                     </label>
                                 ))}
@@ -437,12 +342,12 @@ const SearchPage = () => {
                             <div className="mt-4 space-y-2">
                                 {ratingOptions.map((rating) => (
                                     <label key={rating} className="flex items-center gap-3 rounded-2xl px-1 py-1 text-sm text-slate-700">
-                                        <input type="radio" checked={filters.minRating === String(rating)} onChange={() => updateSearchParams({ minRating: String(rating) })} className="accent-red-600" />
+                                        <input type="radio" checked={filters.minRating === String(rating)} onChange={() => updateSearchParams({ minRating: String(rating) })} className="accent-brand-red" />
                                         <span>{'★'.repeat(rating)} trở lên</span>
                                     </label>
                                 ))}
                                 <label className="flex items-center gap-3 rounded-2xl px-1 py-1 text-sm text-slate-700">
-                                    <input type="radio" checked={filters.minRating === ''} onChange={() => updateSearchParams({ minRating: '' })} className="accent-red-600" />
+                                    <input type="radio" checked={filters.minRating === ''} onChange={() => updateSearchParams({ minRating: '' })} className="accent-brand-red" />
                                     <span>Tất cả</span>
                                 </label>
                             </div>
@@ -451,7 +356,7 @@ const SearchPage = () => {
                         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                             <h3 className="text-lg font-bold text-slate-900">Tình trạng</h3>
                             <label className="mt-4 flex items-center gap-3 text-sm text-slate-700">
-                                <input type="checkbox" checked={filters.inStock} onChange={() => updateSearchParams({ inStock: !filters.inStock ? 'true' : '' })} className="accent-red-600" />
+                                <input type="checkbox" checked={filters.inStock} onChange={() => updateSearchParams({ inStock: !filters.inStock ? 'true' : '' })} className="accent-brand-red" />
                                 <span>Chỉ hiển thị sản phẩm còn hàng</span>
                             </label>
                         </div>
@@ -460,7 +365,7 @@ const SearchPage = () => {
                     <section className="min-w-0">
                         <div className="mb-5 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
                             <span className="font-semibold text-slate-700">{loading && products.length === 0 ? 'Đang tải...' : 'Sắp xếp'}</span>
-                            <select value={filters.sort} onChange={(e) => updateSearchParams({ sort: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-red-500 focus:bg-white xl:w-auto">
+                            <select value={filters.sort} onChange={(e) => updateSearchParams({ sort: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-red focus:bg-white xl:w-auto">
                                 <option value="latest">Mới nhất</option>
                                 <option value="popular">Bán chạy</option>
                                 <option value="price-asc">Giá tăng dần</option>
@@ -471,7 +376,7 @@ const SearchPage = () => {
 
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                             {products.map((product) => (
-                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-red/10">
                                     <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
                                         <button
                                             type="button"
@@ -484,7 +389,7 @@ const SearchPage = () => {
                                                 : isFavorite(product) ? <HeartFilled /> : <HeartOutlined />}
                                         </button>
                                         <img src={product.images?.[0] || product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                                        {product.discount ? <span className="absolute left-3 top-3 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">Mới</span> : null}
+                                        {product.discount ? <span className="absolute left-3 top-3 rounded-full bg-brand-red px-3 py-1 text-xs font-bold text-white">Mới</span> : null}
                                         {product.discount ? <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white">-{product.discount}%</span> : null}
                                     </div>
                                     <div className="p-4 text-left">
@@ -494,7 +399,7 @@ const SearchPage = () => {
                                         <div className="mt-2 text-sm font-semibold text-amber-500">{Number(product.rating || 0).toFixed(1)} / 5.0</div>
                                         <div className="mt-4 flex items-end justify-between gap-3">
                                             <div>
-                                                <div className="text-lg font-black text-red-600">{formatVnd(product.price)}</div>
+                                                <div className="text-lg font-black text-brand-red">{formatVnd(product.price)}</div>
                                                 <div className="text-sm text-slate-400 line-through">{formatVnd(product.oldPrice)}</div>
                                             </div>
                                         </div>
@@ -525,6 +430,7 @@ const SearchPage = () => {
                     </section>
                 </div>
             </main>
+            <Footer />
         </div>
     );
 };

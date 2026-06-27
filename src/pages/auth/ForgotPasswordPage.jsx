@@ -117,7 +117,7 @@ const ForgotPasswordPage = () => {
 
       <Link
         to="/login"
-        className="mt-6 block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+        className="mt-6 block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
       >
         Quay lại đăng nhập
       </Link>

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Empty, message, Spin, Tag } from 'antd';
+import { Alert, Empty, message, Spin, Tag } from 'antd';
 import { Link } from 'react-router-dom';
+import { LoadingOutlined } from '@ant-design/icons';
 import { livestreamApi } from '../api/livestreamApi';
 import { createLivestreamSocket } from '../sockets/livestreamSocket';
 import LiveChatBox from '../components/livestream/LiveChatBox';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 const PEER_CONNECT_TIMEOUT_MS = 30000;
@@ -72,7 +75,6 @@ const UserLivePage = () => {
 
         peer.onicecandidate = (event) => {
             if (event.candidate && adminSocketIdRef.current) {
-                // ICE Candidate la thong tin duong mang de hai trinh duyet tim cach ket noi.
                 socketRef.current?.emit('ice-candidate', {
                     liveId: livestream?._id,
                     targetSocketId: adminSocketIdRef.current,
@@ -120,10 +122,8 @@ const UserLivePage = () => {
                 adminSocketIdRef.current = fromSocketId;
                 const peer = peerRef.current || createPeerConnection();
 
-                // Offer la mo ta ket noi do Admin tao va gui qua Socket.IO.
                 await peer.setRemoteDescription(new RTCSessionDescription(offer));
 
-                // Answer la phan hoi ket noi do User tao de Admin setRemoteDescription.
                 const answer = await peer.createAnswer();
                 await peer.setLocalDescription(answer);
 
@@ -164,29 +164,21 @@ const UserLivePage = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
-            <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
-                <div className="mx-auto flex max-w-[1800px] items-center gap-4">
-                    <Link to="/" className="text-xl font-black text-slate-950">SmartZone Live</Link>
-                    <Link className="ml-auto rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" to="/">
-                        Trang chủ
-                    </Link>
-                </div>
-            </header>
+            <Header />
 
             <main className="mx-auto max-w-[1800px] px-6 py-6">
-
                 {loading ? (
                     <div className="grid min-h-[60vh] place-items-center"><Spin /></div>
                 ) : ended ? (
-                    <Alert type="info" showIcon message="Livestream đã kết thúc" />
+                    <Alert className="text-left rounded-xl" type="info" showIcon message="Livestream đã kết thúc" />
                 ) : !livestream ? (
-                    <div className="grid min-h-[60vh] place-items-center rounded-2xl border border-slate-200 bg-white">
+                    <div className="grid min-h-[60vh] place-items-center rounded-3xl border border-border-color bg-white">
                         <Empty description="Hiện chưa có livestream" />
                     </div>
                 ) : (
                     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-                        <section>
-                            <div className="overflow-hidden rounded-2xl bg-black">
+                        <section className="text-left">
+                            <div className="overflow-hidden rounded-3xl bg-black shadow-lg">
                                 <video
                                     ref={videoRef}
                                     autoPlay
@@ -198,11 +190,17 @@ const UserLivePage = () => {
                             <div className="mt-4">
                                 <h1 className="text-2xl font-bold leading-tight text-slate-950">{livestream.title}</h1>
                                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                                    <Tag color="red">LIVE</Tag>
+                                    <Tag color="red" className="font-bold px-2.5 py-0.5 rounded-full border-none">LIVE</Tag>
                                     <span className="text-sm text-slate-500">{livestream.description || 'Không có mô tả'}</span>
-                                    <Button className="ml-auto rounded-full" type="primary" loading={watching && !peerRef.current} onClick={startWatching} disabled={watching}>
+                                    <button
+                                        type="button"
+                                        onClick={startWatching}
+                                        disabled={watching}
+                                        className="ml-auto inline-flex items-center justify-center rounded-2xl bg-brand-red px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-red/20 transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {watching && !peerRef.current && <LoadingOutlined className="mr-2" />}
                                         {watching ? 'Đang xem livestream' : 'Xem livestream'}
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
                         </section>
@@ -211,6 +209,7 @@ const UserLivePage = () => {
                     </div>
                 )}
             </main>
+            <Footer />
         </div>
     );
 };

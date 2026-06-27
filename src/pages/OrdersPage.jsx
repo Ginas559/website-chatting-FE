@@ -10,9 +10,8 @@ import {
     UserOutlined,
 } from '@ant-design/icons';
 import { cancelMyOrderApi, getMyOrderDetailApi, getMyOrdersApi, repayVnpayOrderApi } from '../util/api';
-import { useNotifications } from '../hooks/useNotifications';
-import NotificationBell from '../components/common/NotificationBell';
-import ToastNotification from '../components/common/ToastNotification';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const STATUS_LABELS = {
     PENDING_PAYMENT: 'Chờ thanh toán',
@@ -30,7 +29,7 @@ const STATUS_STYLES = {
     PENDING_PAYMENT: 'bg-amber-50 text-amber-700',
     NEW: 'bg-sky-50 text-sky-700',
     CONFIRMED: 'bg-indigo-50 text-indigo-700',
-    PREPARING: 'bg-orange-50 text-orange-700',
+    PREPARING: 'bg-brand-red/5 text-brand-red border border-brand-red/10',
     SHIPPING: 'bg-blue-50 text-blue-700',
     DELIVERED: 'bg-emerald-50 text-emerald-700',
     DELIVERY_FAILED: 'bg-red-50 text-red-700',
@@ -226,8 +225,8 @@ const isCancelStatus = (status) => ['CANCELLED', 'CANCEL_REQUESTED', 'DELIVERY_F
 const getTimelinePointTone = ({ entry, isCurrent }) => {
     if (entry.status === 'CANCELLED') {
         return {
-            pointClass: 'border-red-100 bg-red-600 text-white shadow-red-200',
-            labelClass: 'font-semibold text-red-600',
+            pointClass: 'border-red-100 bg-brand-red text-white shadow-brand-red/20',
+            labelClass: 'font-semibold text-brand-red',
             marker: '×',
         };
     }
@@ -242,8 +241,8 @@ const getTimelinePointTone = ({ entry, isCurrent }) => {
 
     if (entry.status === 'DELIVERY_FAILED') {
         return {
-            pointClass: 'border-red-100 bg-red-600 text-white shadow-red-200',
-            labelClass: 'font-semibold text-red-600',
+            pointClass: 'border-red-100 bg-brand-red text-white shadow-brand-red/20',
+            labelClass: 'font-semibold text-brand-red',
             marker: '!',
         };
     }
@@ -338,7 +337,6 @@ const getShopUpdateEntries = (order) => {
 const OrdersPage = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
-    const notificationsProps = useNotifications();
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
     const [summary, setSummary] = useState({ totalPurchasedOrders: 0, totalPurchasedAmount: 0 });
@@ -528,57 +526,28 @@ const OrdersPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
-            <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
-                <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
-                    <Link to="/" className="inline-flex items-center gap-3">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-xl font-black text-white shadow-lg shadow-orange-300/40">S</span>
-                        <div className="text-left">
-                            <div className="text-lg font-black text-slate-900">SmartZone Store</div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-orange-600">Tech Lifestyle</div>
-                        </div>
-                    </Link>
-
-                        <Link to="/search" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                            Trang tìm kiếm
-                        </Link>
-
-                        {isAuthenticated && (
-                            <Link to="/chat" className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                                Tin nhắn
-                            </Link>
-                        )}
-
-                    <div className="ml-auto flex flex-wrap items-center gap-3">
-                        <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100">
-                            <ShoppingCartOutlined />
-                            <span>Giỏ hàng</span>
-                        </Link>
-
-                        {isAuthenticated && <NotificationBell {...notificationsProps} />}
-                    </div>
-                </div>
-            </header>
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <Header />
 
             <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6">
                 <section className="rounded-2xl border border-slate-300 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
                     <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr_1fr] lg:items-center">
                         <div className="flex items-center gap-4">
-                            <div className="grid h-16 w-16 place-items-center rounded-full bg-red-50 text-2xl font-bold text-red-600">
+                            <div className="grid h-16 w-16 place-items-center rounded-full bg-brand-red/5 text-2xl font-bold text-brand-red">
                                 {memberName.charAt(0).toUpperCase() || 'M'}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                                 <div className="truncate text-lg font-medium">{memberName}</div>
                                 <div className="mt-1 text-sm text-slate-500">{memberPhone}</div>
-                                <div className="mt-2 inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600">S-Member</div>
+                                <div className="mt-2 inline-flex rounded-md bg-brand-red/5 px-2 py-1 text-xs font-medium text-brand-red">S-Member</div>
                             </div>
                         </div>
-                        <div className="border-l-0 border-red-500 pl-0 lg:border-l-2 lg:pl-6">
-                            <div className="text-3xl font-medium">{summary.totalPurchasedOrders || 0}</div>
+                        <div className="border-l-0 border-slate-200 pl-0 lg:border-l-2 lg:pl-6 text-left">
+                            <div className="text-3xl font-medium text-brand-red">{summary.totalPurchasedOrders || 0}</div>
                             <div className="mt-1 text-sm text-slate-500">Tổng đơn đã mua thành công</div>
                         </div>
-                        <div className="border-l-0 border-red-500 pl-0 lg:border-l-2 lg:pl-6">
-                            <div className="text-3xl font-medium">{formatVnd(summary.totalPurchasedAmount)}</div>
+                        <div className="border-l-0 border-slate-200 pl-0 lg:border-l-2 lg:pl-6 text-left">
+                            <div className="text-3xl font-medium text-brand-red">{formatVnd(summary.totalPurchasedAmount)}</div>
                             <div className="mt-1 text-sm text-slate-500">Tổng tiền đã mua</div>
                         </div>
                     </div>
@@ -600,7 +569,7 @@ const OrdersPage = () => {
                                     to={item.to}
                                     className={`flex items-center gap-3 border-l-4 px-6 py-4 text-base font-medium ${
                                         item.active
-                                            ? 'border-red-600 bg-red-50 text-red-600'
+                                            ? 'border-brand-red bg-brand-red/5 text-brand-red'
                                             : 'border-transparent text-slate-800'
                                     }`}
                                 >
@@ -619,7 +588,7 @@ const OrdersPage = () => {
                                         <button
                                             type="button"
                                             onClick={() => scrollStatusTabs(-1)}
-                                            className="pointer-events-auto ml-1 grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-xl leading-none text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                                            className="pointer-events-auto ml-1 grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-xl leading-none text-slate-500 shadow-sm transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
                                             aria-label="Lướt trạng thái sang trái"
                                         >
                                             ‹
@@ -629,7 +598,7 @@ const OrdersPage = () => {
                                         <button
                                             type="button"
                                             onClick={() => scrollStatusTabs(1)}
-                                            className="pointer-events-auto mr-1 grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-xl leading-none text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                                            className="pointer-events-auto mr-1 grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-xl leading-none text-slate-500 shadow-sm transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
                                             aria-label="Lướt trạng thái sang phải"
                                         >
                                             ›
@@ -643,7 +612,7 @@ const OrdersPage = () => {
                                                 onClick={() => changeStatus(option.value)}
                                                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${
                                                     status === option.value
-                                                        ? 'border-red-200 bg-red-50 text-red-600 shadow-sm'
+                                                        ? 'border-brand-red/35 bg-brand-red/5 text-brand-red shadow-sm'
                                                         : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'
                                                 }`}
                                             >
@@ -682,14 +651,20 @@ const OrdersPage = () => {
                                                 <div className="flex min-w-0 items-center gap-3">
                                                     <img src={firstItem?.snapshot?.image} alt={firstItem?.snapshot?.name || 'Sản phẩm'} className="h-16 w-16 shrink-0 rounded-lg object-contain" />
                                                     <div className="min-w-0 text-left">
-                                                        <div className="truncate text-sm font-medium uppercase">{firstItem?.snapshot?.name || 'Đơn hàng'}</div>
-                                                        <div className="mt-1 text-sm font-medium">{formatVnd(firstItem?.lineTotal || order.totalAmount)}</div>
+                                                        <div className="text-sm font-medium uppercase leading-snug break-words">{firstItem?.snapshot?.name || 'Đơn hàng'}</div>
+                                                        {(firstItem?.snapshot?.color || firstItem?.snapshot?.capacity) && (
+                                                            <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-500 font-bold">
+                                                                {firstItem.snapshot.color && <span className="rounded bg-slate-200/60 px-1.5 py-0.5">Màu: {firstItem.snapshot.color}</span>}
+                                                                {firstItem.snapshot.capacity && <span className="rounded bg-slate-200/60 px-1.5 py-0.5">Dung lượng: {firstItem.snapshot.capacity}</span>}
+                                                            </div>
+                                                        )}
+                                                        <div className="mt-1.5 text-sm font-medium">{formatVnd(firstItem?.lineTotal || order.totalAmount)}</div>
                                                         {otherCount ? <div className="mt-1 text-xs text-slate-500">Cùng {otherCount} sản phẩm khác</div> : null}
                                                     </div>
                                                 </div>
                                                 <div className="shrink-0 text-left sm:text-right">
                                                     <div className="text-sm text-slate-500">Tổng thanh toán</div>
-                                                    <div className="text-base font-medium text-red-600">{formatVnd(order.totalAmount)}</div>
+                                                    <div className="text-base font-medium text-brand-red">{formatVnd(order.totalAmount)}</div>
                                                     <div className="mt-2 flex flex-wrap justify-start gap-2 sm:justify-end">
                                                         {canReviewOrder(order) && firstItem?.snapshot?.slug ? (
                                                             <Link
@@ -704,7 +679,7 @@ const OrdersPage = () => {
                                                                 type="button"
                                                                 onClick={() => repayVnpayOrder(order)}
                                                                 disabled={mutating}
-                                                                className="inline-flex items-center justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                className="inline-flex items-center justify-center rounded-lg bg-brand-red px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
                                                             >
                                                                 Thanh toán lại
                                                             </button>
@@ -726,7 +701,7 @@ const OrdersPage = () => {
                                                         type="button"
                                                         onClick={() => openCancelModal(order)}
                                                         disabled={mutating}
-                                                        className="rounded-lg border border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        className="rounded-lg border border-brand-red bg-white px-4 py-2 text-sm font-medium text-brand-red transition hover:bg-brand-red/5 disabled:cursor-not-allowed disabled:opacity-60"
                                                     >
                                                         {order.status === 'PREPARING' ? 'Gửi yêu cầu hủy' : 'Hủy đơn'}
                                                     </button>
@@ -738,7 +713,7 @@ const OrdersPage = () => {
                                     <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center">
                                         <div className="text-xl font-medium">Chưa có đơn hàng</div>
                                         <p className="mt-2 text-sm text-slate-500">Khi bạn đặt hàng, lịch sử mua hàng sẽ xuất hiện tại đây.</p>
-                                        <Link to="/search" className="mt-4 inline-flex rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white">
+                                        <Link to="/search" className="mt-4 inline-flex rounded-lg bg-brand-red px-4 py-2 text-sm font-medium text-white hover:bg-brand-red-hover">
                                             Mua sắm ngay
                                         </Link>
                                     </div>
@@ -773,7 +748,7 @@ const OrdersPage = () => {
                                     <button
                                         type="button"
                                         onClick={backToHistory}
-                                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
                                     >
                                         <span className="text-lg leading-none">←</span>
                                         Lịch sử mua hàng
@@ -798,7 +773,7 @@ const OrdersPage = () => {
                                                 <span className="hidden text-slate-300 sm:inline">•</span>
                                                 <span className="text-slate-500">Ngày đặt hàng:</span>
                                                 <span className="font-medium">{formatDateTime(selectedOrder.createdAt)}</span>
-                                                <span className={`rounded-md px-2 py-1 text-xs font-medium ${STATUS_STYLES[selectedOrder.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                <span className={`ml-auto rounded-md px-2 py-1 text-xs font-medium ${STATUS_STYLES[selectedOrder.status] || 'bg-slate-100 text-slate-600'}`}>
                                                     {getOrderStatusLabel(selectedOrder)}
                                                 </span>
                                             </div>
@@ -833,10 +808,16 @@ const OrdersPage = () => {
                                                 {(selectedOrder.items || []).map((item) => (
                                                 <div key={`${selectedOrder.orderCode}-${item.product}`} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                                         <div className="flex min-w-0 items-center gap-3">
-                                                            <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-16 w-16 shrink-0 rounded-lg object-contain" />
+                                                            <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-16 w-16 shrink-0 rounded-lg object-contain text-left" />
                                                             <div className="min-w-0 text-left">
-                                                                <div className="truncate text-sm font-medium uppercase">{item.snapshot?.name}</div>
-                                                                <div className="mt-1 text-sm font-medium">{formatVnd(item.lineTotal)}</div>
+                                                                <div className="text-sm font-medium uppercase leading-snug break-words">{item.snapshot?.name}</div>
+                                                                {(item.snapshot?.color || item.snapshot?.capacity) && (
+                                                                    <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-500 font-bold">
+                                                                        {item.snapshot.color && <span className="rounded bg-slate-200/60 px-1.5 py-0.5">Màu: {item.snapshot.color}</span>}
+                                                                        {item.snapshot.capacity && <span className="rounded bg-slate-200/60 px-1.5 py-0.5">Dung lượng: {item.snapshot.capacity}</span>}
+                                                                    </div>
+                                                                )}
+                                                                <div className="mt-1.5 text-sm font-medium">{formatVnd(item.lineTotal)}</div>
                                                             </div>
                                                         </div>
                                                     <div className="flex items-center gap-3">
@@ -855,7 +836,7 @@ const OrdersPage = () => {
                                             </div>
                                             {canRepayVnpayOrder(selectedOrder) ? (
                                                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-left">
                                                         <div>
                                                             <div className="text-sm font-semibold text-amber-900">Đơn hàng đang chờ thanh toán VNPay</div>
                                                             <p className="mt-1 text-sm text-amber-800">Bạn có thể tạo lại link thanh toán cho đơn này mà không cần đặt đơn mới.</p>
@@ -864,7 +845,7 @@ const OrdersPage = () => {
                                                             type="button"
                                                             onClick={() => repayVnpayOrder(selectedOrder)}
                                                             disabled={mutating}
-                                                            className="inline-flex h-11 items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            className="inline-flex h-11 items-center justify-center rounded-lg bg-brand-red px-4 text-sm font-medium text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
                                                         >
                                                             {mutating ? 'Đang tạo link...' : 'Thanh toán lại'}
                                                         </button>
@@ -879,7 +860,7 @@ const OrdersPage = () => {
                                                 <div
                                                     className={`absolute left-[10%] top-4 hidden h-1 rounded-full transition-all duration-500 sm:block ${
                                                         isCancelStatus(selectedOrder.status)
-                                                            ? 'bg-gradient-to-r from-emerald-500 to-red-500'
+                                                            ? 'bg-gradient-to-r from-emerald-500 to-brand-red'
                                                             : selectedOrder.status === 'DELIVERED'
                                                                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600'
                                                                 : 'bg-gradient-to-r from-emerald-500 to-blue-600'
@@ -928,7 +909,7 @@ const OrdersPage = () => {
                                             ) : null}
                                         </div>
 
-                                        <div className="grid gap-3 lg:grid-cols-2">
+                                        <div className="grid gap-3 lg:grid-cols-2 text-left">
                                             <div className="rounded-xl border border-slate-300 bg-white p-4">
                                                 <div className="text-base font-medium">Thông tin khách hàng</div>
                                                 <div className="mt-4 divide-y divide-slate-200 text-sm">
@@ -945,7 +926,7 @@ const OrdersPage = () => {
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Số lượng sản phẩm</span><b>{selectedOrder.items?.length || 0}</b></div>
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Phương thức</span><b>{selectedOrder.paymentMethod}</b></div>
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Trạng thái</span><b>{getPaymentStatusLabel(selectedOrder)}</b></div>
-                                                    <div className="flex justify-between py-3"><span className="text-slate-500">Tổng số tiền</span><b className="text-red-600">{formatVnd(selectedOrder.totalAmount)}</b></div>
+                                                    <div className="flex justify-between py-3"><span className="text-slate-500">Tổng số tiền</span><b className="text-brand-red">{formatVnd(selectedOrder.totalAmount)}</b></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -961,7 +942,7 @@ const OrdersPage = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-950/20">
                         <div className="text-center">
-                            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-xl font-semibold text-red-600">!</div>
+                            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-red/5 text-xl font-semibold text-brand-red">!</div>
                             <h2 className="mt-4 text-xl font-semibold text-slate-950">
                                 {cancelTarget.status === 'PREPARING' ? 'Gửi yêu cầu hủy đơn?' : 'Xác nhận hủy đơn?'}
                             </h2>
@@ -976,7 +957,7 @@ const OrdersPage = () => {
                                 value={cancelReason}
                                 onChange={(event) => setCancelReason(event.target.value)}
                                 rows={3}
-                                className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-red focus:ring-4 focus:ring-brand-red/10"
                                 placeholder="Ví dụ: muốn đổi sản phẩm, nhập sai địa chỉ..."
                             />
                         </label>
@@ -988,13 +969,13 @@ const OrdersPage = () => {
                                 disabled={mutating}
                                 className="h-12 rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                Giữ đơn hàng
+                                giữ đơn hàng
                             </button>
                             <button
                                 type="button"
                                 onClick={confirmCancelOrder}
                                 disabled={mutating}
-                                className="h-12 rounded-xl bg-red-600 px-4 text-sm font-medium text-white shadow-lg shadow-red-200 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="h-12 rounded-xl bg-brand-red px-4 text-sm font-medium text-white shadow-lg shadow-brand-red/20 transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {mutating ? 'Đang xử lý...' : cancelTarget.status === 'PREPARING' ? 'Gửi yêu cầu hủy' : 'Xác nhận hủy'}
                             </button>
@@ -1002,7 +983,7 @@ const OrdersPage = () => {
                     </div>
                 </div>
             ) : null}
-            <ToastNotification toastMessage={notificationsProps.toastMessage} setToastMessage={notificationsProps.setToastMessage} />
+            <Footer />
         </div>
     );
 };

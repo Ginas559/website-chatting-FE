@@ -17,12 +17,14 @@ import UserLivePage from './pages/UserLivePage';
 import MyLiveChatBansPage from './pages/MyLiveChatBansPage';
 import ChatWidget from './components/chat/ChatWidget';
 import ChatPage from './pages/ChatPage';
+import ScrollToTop from './components/common/ScrollToTop';
 
 function App() {
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<StoreHomePage />} />
 

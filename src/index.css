@@ -1,24 +1,38 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand-red: #b71423;
+  --color-brand-red-hover: #9c0f1b;
+  --color-brand-dark: #1a1c1c;
+  --color-brand-gray: #6b7280;
+  --color-brand-bg: #f9f9f9;
+  --color-border-color: #e2e2e2;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
-  --text: #6b6375;
-  --text-h: #000000;
-  --bg: #fff;
-  --border: #e5e4e7;
+  --text: #4b5563;
+  --text-h: #1a1c1c;
+  --bg: #ffffff;
+  --border: #e2e2e2;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  --accent: #b71423;
+  --accent-bg: rgba(183, 20, 35, 0.1);
+  --accent-border: rgba(183, 20, 35, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.05) 0 10px 15px -3px, rgba(0, 0, 0, 0.02) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  font: 16px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -27,7 +41,7 @@
   -moz-osx-font-smoothing: grayscale;
 
   @media (max-width: 1024px) {
-    font-size: 16px;
+    font-size: 15px;
   }
 }
 
@@ -53,6 +67,7 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
 }
 
 #root {
@@ -176,4 +191,73 @@ code {
 }
 .chat-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Disable tap-highlight-color and text caret for ALL elements in the system to prevent blinking/flashing cursors on static text */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  caret-color: transparent !important;
+}
+
+/* Restore text caret only for editable inputs and textareas */
+input,
+textarea,
+[contenteditable="true"] {
+  caret-color: auto !important;
+}
+
+/* Eliminate focus outline/shadow flashing on click for all elements except keyboard-focused ones */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Prevent accidental text selection and caret flashing on double-click of interactive controls and wrappers */
+button,
+a,
+label,
+select,
+option,
+input[type="checkbox"],
+input[type="radio"],
+svg,
+img,
+.badge,
+.logo,
+.nav-link,
+.slick-slide,
+.slick-track,
+.group {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Prevent caret/selection flash on headers, navigation containers, menus, and all static text elements */
+header,
+header *,
+nav,
+nav *,
+.staff-nav,
+.staff-nav *,
+.nav-link,
+.nav-link * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  caret-color: transparent !important;
+}
+
+/* Ensure inputs/textareas inside header/nav are fully focusable and editable */
+header input,
+header textarea,
+nav input,
+nav textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  caret-color: auto !important;
 }
