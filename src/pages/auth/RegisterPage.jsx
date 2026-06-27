@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import FormInput from '../../components/common/FormInput';
 import SubmitButton from '../../components/common/SubmitButton';
@@ -195,6 +195,22 @@ const RegisterPage = () => {
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
                 </svg>
+            )}
+            footer={(
+                <>
+                    <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-slate-100" />
+                        <span className="px-2 text-[9px] font-black uppercase tracking-widest text-slate-400">Đã có tài khoản?</span>
+                        <div className="h-px flex-1 bg-slate-100" />
+                    </div>
+
+                    <Link
+                        to="/login"
+                        className="mt-4 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-bold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
+                    >
+                        Quay lại đăng nhập
+                    </Link>
+                </>
             )}
         >
             {registerError && <StatusAlert>{registerError}</StatusAlert>}
