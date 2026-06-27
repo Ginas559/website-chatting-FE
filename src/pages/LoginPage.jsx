@@ -6,6 +6,7 @@ import AuthShell from '../components/common/AuthShell';
 import FormInput from '../components/common/FormInput';
 import SubmitButton from '../components/common/SubmitButton';
 import StatusAlert from '../components/common/StatusAlert';
+import iphone16Img from '../assets/iphone-16.png';
 
 const getFeedbackMessage = (payload, fallback = 'Đăng nhập thất bại') => {
     if (!payload) return fallback;
@@ -59,26 +60,65 @@ const LoginPage = () => {
         setFeedbackMsg(getFeedbackMessage(result.payload));
     };
 
+    const loginLeftSide = (
+        <div className="flex-1 flex flex-col justify-between h-full relative z-10">
+            <div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xl font-black tracking-tight text-brand-red font-sans">SMARTZONE</span>
+                    <span className="text-[10px] font-black bg-brand-red/10 text-brand-red px-2 py-0.5 rounded">STORE</span>
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                    Hệ thống bán lẻ thiết bị công nghệ chính hãng hàng đầu
+                </p>
+            </div>
+
+            <div className="relative my-8 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-red/10 to-rose-500/10 blur-2xl rounded-full scale-75" />
+                <div className="relative max-w-[260px] w-full transform -rotate-3 transition duration-500 hover:rotate-0 hover:scale-105 select-none">
+                    <img 
+                        src={iphone16Img} 
+                        alt="SmartZone Premium" 
+                        className="w-full h-auto drop-shadow-[0_20px_40px_rgba(183,20,35,0.12)]"
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://via.placeholder.com/300x500?text=SmartZone+Premium';
+                        }}
+                    />
+                </div>
+            </div>
+
+            <div>
+                <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase block mb-3">Đối tác chiến lược ủy quyền</span>
+                <div className="flex flex-wrap items-center gap-5 opacity-40 grayscale text-[11px] font-black uppercase tracking-wider text-slate-800">
+                    <span>Apple Authorized</span>
+                    <span>Samsung Premium</span>
+                    <span>Sony Elite</span>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <AuthShell
-            title="Chat App"
-            subtitle="Đăng nhập để tiếp tục"
+            title="Đăng nhập tài khoản"
+            subtitle="Nhập email và mật khẩu của bạn"
+            leftSide={loginLeftSide}
             icon={(
-                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                 </svg>
             )}
             footer={(
                 <>
                     <div className="flex items-center gap-3">
-                        <div className="h-px flex-1 bg-slate-200" />
-                        <span className="px-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Hoặc</span>
-                        <div className="h-px flex-1 bg-slate-200" />
+                        <div className="h-px flex-1 bg-slate-100" />
+                        <span className="px-2 text-[9px] font-black uppercase tracking-widest text-slate-400">Hoặc</span>
+                        <div className="h-px flex-1 bg-slate-100" />
                     </div>
 
                     <Link
                         to="/register"
-                        className="mt-4 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-center text-sm font-semibold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
+                        className="mt-4 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-bold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
                     >
                         Tạo tài khoản mới
                     </Link>
