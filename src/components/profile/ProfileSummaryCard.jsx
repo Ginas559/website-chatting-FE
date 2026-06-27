@@ -53,6 +53,7 @@ const ProfileSummaryCard = ({
     onLogout,
 }) => {
     const [copyLabel, setCopyLabel] = useState('Sao chép email');
+    const [copiedCoupon, setCopiedCoupon] = useState('');
     const copyTimerRef = useRef(null);
 
     const email = profileData.email || userEmail || '';
@@ -77,7 +78,7 @@ const ProfileSummaryCard = ({
                 ? { label: 'Có lỗi khi tải/lưu', tone: 'bg-red-50 text-red-700 border-red-100' }
                 : successMessage
                     ? { label: 'Cập nhật thành công', tone: 'bg-emerald-50 text-emerald-700 border-emerald-100' }
-                    : { label: 'Sẵn sàng chỉnh sửa', tone: 'bg-orange-50 text-orange-700 border-orange-100' };
+                    : { label: 'Sẵn sàng chỉnh sửa', tone: 'bg-brand-red/5 text-brand-red border-brand-red/10' };
 
     const handleCopyEmail = async () => {
         if (!email) return;
@@ -98,6 +99,15 @@ const ProfileSummaryCard = ({
         }
     };
 
+    const handleCopyCoupon = async (code) => {
+        if (!code) return;
+        try {
+            await navigator.clipboard.writeText(code);
+            setCopiedCoupon(code);
+            window.setTimeout(() => setCopiedCoupon(''), 1500);
+        } catch {}
+    };
+
     useEffect(() => {
         return () => {
             if (copyTimerRef.current) {
@@ -107,10 +117,10 @@ const ProfileSummaryCard = ({
     }, []);
 
     return (
-        <aside className="relative overflow-hidden rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-orange-50 via-red-50 to-rose-50" />
+        <aside className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-brand-red/5 via-brand-red/10 to-rose-50" />
             <div className="relative flex flex-col items-center text-center">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-orange-500 via-red-500 to-rose-500 p-1 shadow-[0_20px_40px_rgba(248,113,113,0.24)]">
+                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-brand-red via-red-500 to-rose-500 p-1 shadow-lg">
                     <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-slate-100">
                         {profileData.avatar ? (
                             <img src={profileData.avatar} alt="Avatar" className="h-full w-full object-cover" />
@@ -121,82 +131,104 @@ const ProfileSummaryCard = ({
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                    <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-red-600">
+                    <span className="rounded-full border border-brand-red/15 bg-brand-red/5 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-brand-red">
                         Thành viên
                     </span>
-                    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusInfo.tone}`}>
+                    <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-wider ${statusInfo.tone}`}>
                         {statusInfo.label}
                     </span>
                 </div>
 
-                <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{displayName}</h2>
+                <h2 className="mt-4 text-xl font-black text-slate-900 font-sans">{displayName}</h2>
+                <p className="mt-1 text-xs font-semibold text-slate-400">{email || 'Chưa liên kết email'}</p>
 
-                <p className="mt-1 text-sm text-slate-500">{email || 'Chưa có email'}</p>
-
-                <div className="mt-6 w-full rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-left">
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold text-slate-700">Độ hoàn thiện hồ sơ</span>
-                        <span className="font-bold text-slate-900">{completion}%</span>
+                <div className="mt-6 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                        <span>Hồ sơ cá nhân</span>
+                        <span className="text-brand-red">{completion}%</span>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-200">
                         <div
-                            className="h-full rounded-full bg-gradient-to-r from-orange-500 to-red-500 transition-all"
+                            className="h-full rounded-full bg-gradient-to-r from-brand-red to-red-500 transition-all duration-500"
                             style={{ width: `${completion}%` }}
                         />
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                        <span>{filledFieldCount}/{PROFILE_FIELDS.length} trường đã có dữ liệu</span>
-                        <span>{updatedAt}</span>
+                    <div className="mt-2.5 flex items-center justify-between text-[10px] font-semibold text-slate-400">
+                        <span>Đã nhập {filledFieldCount}/{PROFILE_FIELDS.length} mục</span>
+                        <span>{updatedAt !== 'Chưa cập nhật' ? updatedAt : 'Mới tạo'}</span>
                     </div>
                 </div>
 
                 {rewardPoints > 0 || rewardCoupons.length > 0 ? (
                     <div className="mt-5 grid w-full gap-3 text-left sm:grid-cols-2">
                         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Điểm tích lũy</p>
-                            <p className="mt-2 text-2xl font-black text-emerald-700">{rewardPoints}</p>
-                            <p className="mt-1 text-xs text-emerald-700/80">Dùng cho lần mua sau</p>
+                            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Điểm tích lũy</p>
+                            <p className="mt-1 text-2xl font-black text-emerald-700 leading-none">{rewardPoints}</p>
+                            <p className="mt-1.5 text-[10px] font-semibold text-emerald-700/80">S-Points khả dụng</p>
                         </div>
-                        <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-700">Mã giảm giá</p>
-                            <p className="mt-2 text-2xl font-black text-orange-700">{displayCoupons.length}</p>
-                            <p className="mt-1 text-xs text-orange-700/80">Mã còn hiệu lực trong kho</p>
-                        </div>
-                    </div>
-                ) : null}
-
-                {displayCoupons.length ? (
-                    <div className="mt-4 w-full rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-                        <div className="flex items-center justify-between gap-3">
-                            <h3 className="text-sm font-bold text-slate-900">Danh sách mã thưởng</h3>
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{displayCoupons.length} mã</span>
-                        </div>
-                        <div className="mt-3 space-y-3">
-                            {displayCoupons.map((coupon) => (
-                                <div
-                                    key={coupon.code || coupon._id}
-                                    className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3"
-                                >
-                                    <div className="text-xs uppercase tracking-[0.18em] text-orange-700">{coupon.code}</div>
-                                    <div className="mt-1 text-sm font-semibold text-slate-900">
-                                        Giảm {coupon.discountPercent}% cho đơn tiếp theo
-                                        {coupon.minOrderAmount
-                                            ? ` (đơn tối thiểu ${Number(coupon.minOrderAmount).toLocaleString('vi-VN')}đ)`
-                                            : ''}
-                                    </div>
-                                    <div className="mt-1 text-xs text-slate-500">
-                                        Hạn dùng: {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('vi-VN') : 'Chưa có'}
-                                    </div>
-                                    {coupon.isUsed ? (
-                                        <div className="mt-2 text-xs font-semibold text-slate-500">Đã sử dụng</div>
-                                    ) : null}
-                                </div>
-                            ))}
+                        <div className="rounded-2xl border border-brand-red/15 bg-brand-red/5 px-4 py-3">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-brand-red">Mã giảm giá</p>
+                            <p className="mt-1 text-2xl font-black text-brand-red leading-none">{displayCoupons.length}</p>
+                            <p className="mt-1.5 text-[10px] font-semibold text-brand-red/80">Ưu đãi của tôi</p>
                         </div>
                     </div>
                 ) : null}
 
-                <div className="mt-5 grid w-full gap-3">
+                {displayCoupons.length > 0 && (
+                    <div className="mt-5 w-full rounded-3xl border border-slate-200 bg-slate-50/50 p-4 text-left">
+                        <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 mb-3">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-sans">Mã ưu đãi của bạn</h3>
+                            <span className="rounded-full bg-white border border-slate-200 px-2 py-0.5 text-[9px] font-black text-slate-500 uppercase">{displayCoupons.length} mã</span>
+                        </div>
+                        <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
+                            {displayCoupons.map((coupon) => {
+                                const isCopied = copiedCoupon === coupon.code;
+                                return (
+                                    <div
+                                        key={coupon.code || coupon._id}
+                                        className="relative flex items-center justify-between gap-3 rounded-xl border border-dashed border-brand-red/35 bg-white p-3.5 shadow-sm overflow-hidden"
+                                    >
+                                        {/* Left/Right circle tickets cutouts */}
+                                        <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-50 border-r border-dashed border-brand-red/35 rounded-full" />
+                                        <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-50 border-l border-dashed border-brand-red/35 rounded-full" />
+                                        
+                                        <div className="min-w-0 text-left pl-1.5 space-y-1">
+                                            <div className="text-xs font-black uppercase tracking-widest text-brand-red">{coupon.code}</div>
+                                            <div className="text-[11px] font-bold text-slate-800 leading-snug">
+                                                Giảm {coupon.discountPercent}% cho đơn sau
+                                                {coupon.minOrderAmount && (
+                                                    <span className="block text-[10px] text-slate-400 font-medium">Tối thiểu: {Number(coupon.minOrderAmount).toLocaleString('vi-VN')}đ</span>
+                                                )}
+                                            </div>
+                                            <div className="text-[9px] text-slate-400 font-semibold">
+                                                Hạn: {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('vi-VN') : 'Vô thời hạn'}
+                                            </div>
+                                            {coupon.isUsed && (
+                                                <span className="inline-block bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.2 rounded font-bold uppercase">Đã sử dụng</span>
+                                            )}
+                                        </div>
+
+                                        {!coupon.isUsed && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopyCoupon(coupon.code)}
+                                                className={`shrink-0 h-7 px-3.5 text-[10px] font-bold rounded-lg border transition ${
+                                                    isCopied 
+                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                                                        : 'bg-brand-red/5 text-brand-red border-brand-red/10 hover:bg-brand-red hover:text-white'
+                                                }`}
+                                            >
+                                                {isCopied ? 'Copied' : 'Lấy mã'}
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-6 grid w-full gap-3">
                     {statCards.map((card) => {
                         const value = card.valueKey === 'completion'
                             ? completion
@@ -205,11 +237,11 @@ const ProfileSummaryCard = ({
                                 : updatedAt;
 
                         return (
-                            <div key={card.label} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-                                <p className="text-sm font-medium text-slate-500">{card.label}</p>
-                                <p className="shrink-0 text-right text-base font-bold text-slate-900">
+                            <div key={card.label} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{card.label}</p>
+                                <p className="shrink-0 text-right text-sm font-extrabold text-slate-900 font-sans">
                                     {value}
-                                    <span className="ml-0.5 text-sm font-semibold text-slate-400">{card.suffix}</span>
+                                    <span className="ml-0.5 text-xs font-semibold text-slate-400">{card.suffix}</span>
                                 </p>
                             </div>
                         );
@@ -221,14 +253,14 @@ const ProfileSummaryCard = ({
                         type="button"
                         onClick={handleCopyEmail}
                         disabled={!email}
-                        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {copyLabel}
                     </button>
                     <button
                         type="button"
                         onClick={onLogout}
-                        className="inline-flex items-center justify-center rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200 transition hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-xl"
+                        className="inline-flex items-center justify-center rounded-2xl bg-brand-red px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-red/20 transition hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl"
                     >
                         Đăng xuất
                     </button>

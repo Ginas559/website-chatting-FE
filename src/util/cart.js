@@ -76,6 +76,8 @@ const normalizeItem = (item) => {
             image: snapshot.image || item?.image || item?.product?.image || '',
             price: Number(snapshot.price ?? item?.price ?? unitPrice ?? 0),
             brand: snapshot.brand || item?.brand || item?.product?.brand || '',
+            color: snapshot.color || item?.color || '',
+            capacity: snapshot.capacity || item?.capacity || '',
         },
         availability: item?.availability || {
             inStock: true,
@@ -128,19 +130,23 @@ export const fetchCart = async (params = {}) => {
     return handleApiResponse(response);
 };
 
-export const addToCart = async (product, qty = 1) => {
+export const addToCart = async (product, qty = 1, color = '', capacity = '') => {
     const productId = product?.id || product?._id || product?.productId;
     const response = await axios.post('cart/items', {
         productId,
         quantity: qty,
+        color,
+        capacity,
     });
 
     return handleApiResponse(response);
 };
 
-export const updateCartQty = async (productId, qty) => {
+export const updateCartQty = async (productId, qty, color = '', capacity = '') => {
     const response = await axios.patch(`cart/items/${productId}`, {
         quantity: qty,
+        color,
+        capacity,
     });
 
     return handleApiResponse(response);

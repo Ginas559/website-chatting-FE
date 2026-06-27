@@ -5,6 +5,7 @@ import FormInput from "../../components/common/FormInput";
 import SubmitButton from "../../components/common/SubmitButton";
 import AuthShell from "../../components/common/AuthShell";
 import StatusAlert from "../../components/common/StatusAlert";
+import iphone16Img from "../../assets/iphone-16.png";
 import {
   clearForgotPasswordFeedback,
   resetForgotPasswordState,
@@ -48,14 +49,65 @@ const ForgotPasswordPage = () => {
     }
   };
 
+  const forgotPasswordLeftSide = (
+    <div className="flex-1 flex flex-col justify-between h-full relative z-10">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-black tracking-tight text-brand-red font-sans">SMARTZONE</span>
+          <span className="text-[10px] font-black bg-brand-red/10 text-brand-red px-2 py-0.5 rounded">STORE</span>
+        </div>
+        <p className="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+          Khôi phục tài khoản mật khẩu bảo mật và an toàn
+        </p>
+      </div>
+
+      <div className="relative my-8 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-red/5 to-rose-500/5 blur-xl rounded-full scale-75" />
+        <div className="relative max-w-[200px] w-full select-none opacity-90 hover:opacity-100 transition-opacity">
+          <img 
+            src={iphone16Img} 
+            alt="SmartZone Recovery" 
+            className="w-full h-auto drop-shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://via.placeholder.com/300x500?text=SmartZone+Recovery';
+            }}
+          />
+        </div>
+      </div>
+
+      <div>
+        <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase block mb-1">Cần hỗ trợ trực tiếp?</span>
+        <p className="text-xs text-slate-400 font-medium">Hotline chăm sóc khách hàng: <span className="font-bold text-slate-700">1900 1234</span></p>
+      </div>
+    </div>
+  );
+
   return (
     <AuthShell
       title="Quên mật khẩu"
       subtitle={isForgotPasswordOtpSent ? "Xác thực OTP và đặt mật khẩu mới" : "Nhập email để nhận mã OTP"}
+      leftSide={forgotPasswordLeftSide}
       icon={(
-        <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 1a7 7 0 00-7 7v3H4a2 2 0 00-2 2v8a2 2 0 002 2h16a2 2 0 002-2v-8a2 2 0 00-2-2h-1V8a7 7 0 00-7-7zm-5 10V8a5 5 0 1110 0v3H7zm5 4a2 2 0 110 4 2 2 0 010-4z" />
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-7.5h15m-15 0L12 7.5m-3.75 3.75 3.75 3.75" />
         </svg>
+      )}
+      footer={(
+        <>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-100" />
+            <span className="px-2 text-[9px] font-black uppercase tracking-widest text-slate-400">Hoặc</span>
+            <div className="h-px flex-1 bg-slate-100" />
+          </div>
+
+          <Link
+            to="/login"
+            className="mt-4 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-bold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
+          >
+            Quay lại đăng nhập
+          </Link>
+        </>
       )}
     >
       {forgotPasswordError && <StatusAlert>{forgotPasswordError}</StatusAlert>}
@@ -114,13 +166,6 @@ const ForgotPasswordPage = () => {
             </>
           )}
       </div>
-
-      <Link
-        to="/login"
-        className="mt-6 block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-      >
-        Quay lại đăng nhập
-      </Link>
     </AuthShell>
   );
 };

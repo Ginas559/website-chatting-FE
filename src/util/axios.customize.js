@@ -40,8 +40,8 @@ instance.interceptors.response.use(
 
             // Auto-refresh on 401 (token expired)
             if (status === 401 && !originalRequest._retry) {
-                // Don't retry refresh-token or logout endpoints
-                if (originalRequest.url?.includes('refresh-token') || originalRequest.url?.includes('logout')) {
+                // Don't retry login, refresh-token, or logout endpoints
+                if (originalRequest.url?.includes('login') || originalRequest.url?.includes('refresh-token') || originalRequest.url?.includes('logout')) {
                     return Promise.reject(data || error);
                 }
 

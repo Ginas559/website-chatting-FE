@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { HeartFilled, HeartOutlined, LoadingOutlined } from '@ant-design/icons';
-import { HomeOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { fetchUserProfile, logoutUser } from '../redux/slices/authSlice';
 import { clearProfileFeedback, fetchProfile, resetProfileState, saveProfile } from '../redux/slices/profileSlice';
 import ProfileInput from '../components/profile/ProfileInput';
@@ -11,6 +10,8 @@ import ProfileSummaryCard from '../components/profile/ProfileSummaryCard';
 import useFavorites from '../hooks/useFavorites';
 import { changePasswordApi, getFavoriteProductsApi, getRecentlyViewedProductsApi } from '../util/api';
 import { getProductId } from '../util/productId';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const mapProfileToForm = (profile = {}) => ({
     firstName: '',
@@ -166,13 +167,13 @@ const ProfileEditor = ({
                     <button
                         type="submit"
                         disabled={saving}
-                        className="inline-flex w-full items-center justify-center rounded-2xl bg-red-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-200 transition hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                        className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-red px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-red/20 transition hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                     >
                         {saving ? 'Đang lưu...' : 'Lưu thông tin'}
                     </button>
                 )}
             >
-                <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-left text-sm text-orange-700">
+                <div className="mb-6 rounded-2xl border border-brand-red/10 bg-brand-red/5 px-4 py-3 text-left text-sm text-brand-red">
                     Hồ sơ đã hoàn thiện {completion}%. Bạn có thể cập nhật thêm số điện thoại, địa chỉ và ảnh đại diện.
                 </div>
 
@@ -235,7 +236,7 @@ const ChangePasswordSection = () => {
 
     return (
         <form onSubmit={handleSubmit} className="rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Security</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-red">Security</p>
             <h2 className="mt-1 text-2xl font-black text-slate-900">Đổi mật khẩu</h2>
             <p className="mt-2 text-sm text-slate-500">Nhập mật khẩu hiện tại để cập nhật mật khẩu mới.</p>
             {error && <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
@@ -248,7 +249,7 @@ const ChangePasswordSection = () => {
             <button
                 type="submit"
                 disabled={loading}
-                className="mt-5 inline-flex rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60"
+                className="mt-5 inline-flex rounded-2xl bg-brand-dark px-5 py-3 text-sm font-semibold text-white transition hover:bg-black/80 disabled:opacity-60"
             >
                 {loading ? 'Đang đổi...' : 'Đổi mật khẩu'}
             </button>
@@ -349,49 +350,12 @@ const UserProfilePage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
-            <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
-                <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
-                    <Link to="/" className="inline-flex items-center gap-3">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-xl font-black text-white shadow-lg shadow-orange-300/40">S</span>
-                        <div className="text-left">
-                            <div className="text-lg font-black text-slate-900">SmartZone Store</div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-orange-600">Tech Lifestyle</div>
-                        </div>
-                    </Link>
-
-                    <div className="ml-auto flex flex-wrap items-center gap-3">
-                        <Link to="/" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                            <HomeOutlined />
-                            Trang chủ
-                        </Link>
-                        <Link to="/search" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                            <SearchOutlined />
-                            Tìm kiếm
-                        </Link>
-                        <Link to="/orders" className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100">
-                            <SnippetsOutlined />
-                            Đơn hàng
-                        </Link>
-                        <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100">
-                            <ShoppingCartOutlined />
-                            Giỏ hàng
-                        </Link>
-                        <button
-                            onClick={handleLogout}
-                            type="button"
-                            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-                        >
-                            <LogoutOutlined />
-                            Đăng xuất
-                        </button>
-                    </div>
-                </div>
-            </header>
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <Header />
 
             <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
                 <div className="mb-6 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Tài khoản thành viên</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-red">Tài khoản thành viên</p>
                     <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Thông tin cá nhân</h1>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                         Cập nhật thông tin giao hàng và liên hệ để đặt hàng nhanh hơn trong các lần mua tiếp theo.
@@ -416,40 +380,64 @@ const UserProfilePage = () => {
                     <ChangePasswordSection />
                 </section>
 
-                <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                    <div className="flex items-end justify-between gap-3">
+                <section className="mt-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-end justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Favorites</p>
-                            <h2 className="mt-1 text-2xl font-black text-slate-900">Sản phẩm yêu thích</h2>
+                            <p className="text-xs font-black uppercase tracking-wider text-brand-red font-sans">Favorites</p>
+                            <h2 className="mt-1 text-xl font-black text-slate-900 font-sans">Sản phẩm yêu thích</h2>
                         </div>
                     </div>
                     {!favoriteProducts.length ? (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                            Bạn chưa có sản phẩm yêu thích nào.
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-xs font-bold text-slate-400">
+                            🔍 Bạn chưa thêm sản phẩm yêu thích nào.
                         </div>
                     ) : (
-                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                             {favoriteProducts.map((product) => (
-                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                                    <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
-                                        <button
-                                            type="button"
-                                            onClick={(event) => {
-                                                event.preventDefault();
-                                                onToggleFavorite(product);
-                                            }}
-                                            className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-base text-rose-500 shadow transition hover:scale-105"
-                                        >
-                                            {loadingMap[getProductId(product)]
-                                                ? <LoadingOutlined />
-                                                : isFavorite(product) ? <HeartFilled /> : <HeartOutlined />}
-                                        </button>
-                                        <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                                <Link 
+                                    key={product.id} 
+                                    to={`/product/${product.slug || product.id}`} 
+                                    className="group relative block rounded-3xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:shadow-xl hover:border-brand-red/25 hover:-translate-y-1"
+                                >
+                                    {/* Favorite Button */}
+                                    <button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            onToggleFavorite(product);
+                                        }}
+                                        className="absolute right-4 top-4 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-sm text-rose-500 shadow-sm backdrop-blur-sm transition duration-300 hover:scale-110 hover:bg-white"
+                                    >
+                                        {loadingMap[getProductId(product)] ? (
+                                            <LoadingOutlined className="text-xs" />
+                                        ) : isFavorite(product) ? (
+                                            <HeartFilled />
+                                        ) : (
+                                            <HeartOutlined />
+                                        )}
+                                    </button>
+
+                                    {/* Image */}
+                                    <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-slate-50 flex items-center justify-center p-3 relative">
+                                        <img 
+                                            src={product.image} 
+                                            alt={product.name} 
+                                            className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-105" 
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                                        />
                                     </div>
-                                    <div className="p-4 text-left">
-                                        <div className="text-xs uppercase tracking-wide text-slate-400">{product.category}</div>
-                                        <div className="mt-2 font-bold text-slate-900">{product.name}</div>
-                                        <div className="mt-2 text-orange-600">{Number(product.price || 0).toLocaleString('vi-VN')}đ</div>
+
+                                    {/* Content */}
+                                    <div className="mt-4 text-left">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block break-words break-all">
+                                            {product.brand} &bull; {product.category}
+                                        </span>
+                                        <h3 className="mt-1 text-sm font-bold text-slate-900 line-clamp-2 min-h-[40px] leading-tight break-words break-all group-hover:text-brand-red transition-colors">
+                                            {product.name}
+                                        </h3>
+                                        <div className="mt-3 text-base font-black text-brand-red leading-none">
+                                            {Number(product.price || 0).toLocaleString('vi-VN')}đ
+                                        </div>
                                     </div>
                                 </Link>
                             ))}
@@ -457,22 +445,44 @@ const UserProfilePage = () => {
                     )}
                 </section>
 
-                <section className="mt-8 rounded-[28px] border border-slate-300 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-600">Recently Viewed</p>
-                    <h2 className="mt-1 text-2xl font-black text-slate-900">Sản phẩm đã xem</h2>
+                <section className="mt-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="border-b border-slate-100 pb-4 mb-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-brand-red font-sans">Recently Viewed</p>
+                        <h2 className="mt-1 text-xl font-black text-slate-900 font-sans">Sản phẩm đã xem gần đây</h2>
+                    </div>
                     {!recentlyViewedProducts.length ? (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                            Chưa có sản phẩm đã xem gần đây.
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-xs font-bold text-slate-400">
+                            👀 Bạn chưa xem sản phẩm nào gần đây.
                         </div>
                     ) : (
-                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
                             {recentlyViewedProducts.map((product) => (
-                                <Link key={product.id} to={`/product/${product.slug || product.id}`} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                                    <img src={product.image} alt={product.name} className="aspect-[4/5] w-full object-cover transition duration-300 group-hover:scale-105" />
-                                    <div className="p-4 text-left">
-                                        <div className="text-xs uppercase tracking-wide text-slate-400">{product.category}</div>
-                                        <div className="mt-2 font-bold text-slate-900">{product.name}</div>
-                                        <div className="mt-2 text-orange-600">{Number(product.price || 0).toLocaleString('vi-VN')}đ</div>
+                                <Link 
+                                    key={product.id} 
+                                    to={`/product/${product.slug || product.id}`} 
+                                    className="group relative block rounded-3xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:shadow-xl hover:border-brand-red/25 hover:-translate-y-1"
+                                >
+                                    {/* Image */}
+                                    <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-slate-50 flex items-center justify-center p-3 relative">
+                                        <img 
+                                            src={product.image} 
+                                            alt={product.name} 
+                                            className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-105" 
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                                        />
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="mt-4 text-left">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block break-words break-all">
+                                            {product.brand} &bull; {product.category}
+                                        </span>
+                                        <h3 className="mt-1 text-sm font-bold text-slate-900 line-clamp-2 min-h-[40px] leading-tight break-words break-all group-hover:text-brand-red transition-colors">
+                                            {product.name}
+                                        </h3>
+                                        <div className="mt-3 text-base font-black text-brand-red leading-none">
+                                            {Number(product.price || 0).toLocaleString('vi-VN')}đ
+                                        </div>
                                     </div>
                                 </Link>
                             ))}
@@ -480,6 +490,7 @@ const UserProfilePage = () => {
                     )}
                 </section>
             </main>
+            <Footer />
         </div>
     );
 };

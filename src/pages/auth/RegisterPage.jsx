@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import FormInput from '../../components/common/FormInput';
 import SubmitButton from '../../components/common/SubmitButton';
 import AuthShell from '../../components/common/AuthShell';
 import StatusAlert from '../../components/common/StatusAlert';
+import iphone16Img from '../../assets/iphone-16.png';
 import {
     clearError,
     clearRegisterFeedback,
@@ -115,14 +116,101 @@ const RegisterPage = () => {
         setErrors({ otpCode: result.payload?.error || 'Mã OTP không hợp lệ' });
     };
 
+    const activeStep = isOtpSent ? 2 : 1;
+
+    const registerLeftSide = (
+        <div className="flex-1 flex flex-col justify-between h-full relative z-10">
+            <div className="space-y-8">
+                <div>
+                    <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase">Đăng ký hội viên</span>
+                    <h2 className="mt-2 text-xl font-black text-slate-900 leading-tight font-sans">Trở thành thành viên SmartZone</h2>
+                    <p className="mt-1.5 text-xs text-slate-400 font-bold leading-relaxed">
+                        Khám phá hệ sinh thái công nghệ hàng đầu với những ưu đãi đặc quyền dành riêng cho bạn.
+                    </p>
+                </div>
+
+                {/* Steps Visualizer */}
+                <div className="relative pl-6 space-y-6">
+                    {/* Vertical line indicator */}
+                    <div className="absolute left-1 top-2 bottom-2 w-0.5 bg-slate-200" />
+
+                    {/* Step 1 */}
+                    <div className="relative flex items-start gap-3">
+                        <div className={`absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full border-2 transition duration-300 ${
+                            activeStep >= 1 ? 'bg-brand-red border-brand-red' : 'bg-white border-slate-300'
+                        }`} />
+                        <div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${activeStep === 1 ? 'text-brand-red' : 'text-slate-400'}`}>Bước 1</span>
+                            <p className="text-xs font-bold text-slate-700 mt-0.5">Điền thông tin cá nhân</p>
+                        </div>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className="relative flex items-start gap-3">
+                        <div className={`absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full border-2 transition duration-300 ${
+                            activeStep >= 2 ? 'bg-brand-red border-brand-red' : 'bg-white border-slate-300'
+                        }`} />
+                        <div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${activeStep === 2 ? 'text-brand-red' : 'text-slate-400'}`}>Bước 2</span>
+                            <p className="text-xs font-bold text-slate-700 mt-0.5">Xác thực OTP qua Email</p>
+                        </div>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="relative flex items-start gap-3">
+                        <div className={`absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full border-2 transition duration-300 ${
+                            activeStep >= 3 ? 'bg-brand-red border-brand-red' : 'bg-white border-slate-300'
+                        }`} />
+                        <div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${activeStep === 3 ? 'text-brand-red' : 'text-slate-400'}`}>Bước 3</span>
+                            <p className="text-xs font-bold text-slate-700 mt-0.5">Hoàn tất & Mua sắm</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-8 relative flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-red/5 to-rose-500/5 blur-xl rounded-full scale-75" />
+                <div className="relative max-w-[200px] w-full select-none opacity-90 hover:opacity-100 transition-opacity">
+                    <img 
+                        src={iphone16Img} 
+                        alt="SmartZone Member benefits" 
+                        className="w-full h-auto drop-shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://via.placeholder.com/300x500?text=SmartZone+Member';
+                        }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <AuthShell
             title="Đăng ký tài khoản"
             subtitle={isOtpSent ? 'Xác thực OTP để hoàn tất' : 'Tạo tài khoản mới trong vài bước'}
+            leftSide={registerLeftSide}
             icon={(
-                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm1.07-7.75l-.9.92A2 2 0 0012 12h-1v-1a4 4 0 011.17-2.83l1.24-1.25a1.75 1.75 0 10-2.91-1.27H8.5a3.5 3.5 0 116.57 1.6z" />
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
                 </svg>
+            )}
+            footer={(
+                <>
+                    <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-slate-100" />
+                        <span className="px-2 text-[9px] font-black uppercase tracking-widest text-slate-400">Đã có tài khoản?</span>
+                        <div className="h-px flex-1 bg-slate-100" />
+                    </div>
+
+                    <Link
+                        to="/login"
+                        className="mt-4 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-xs font-bold text-slate-700 transition hover:border-brand-red/35 hover:bg-brand-red/5 hover:text-brand-red"
+                    >
+                        Quay lại đăng nhập
+                    </Link>
+                </>
             )}
         >
             {registerError && <StatusAlert>{registerError}</StatusAlert>}
@@ -146,12 +234,30 @@ const RegisterPage = () => {
                     </>
                 ) : (
                     <>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-center shadow-sm">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Thời gian OTP</p>
-                            <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-                                {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+                        <div className="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="relative w-20 h-20">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="40" cy="40" r="34" stroke="#e2e8f0" strokeWidth="5" fill="transparent" />
+                                    <circle 
+                                        cx="40" 
+                                        cy="40" 
+                                        r="34" 
+                                        stroke="#b71423" 
+                                        strokeWidth="5" 
+                                        fill="transparent" 
+                                        strokeDasharray="213.63" 
+                                        strokeDashoffset={213.63 - (countdown / 300) * 213.63} 
+                                        strokeLinecap="round"
+                                        className="transition-all duration-1000 ease-linear"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-lg font-black text-slate-900 font-sans">
+                                        {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+                                    </span>
+                                </div>
                             </div>
-                            <p className="mt-2 text-sm text-slate-500">Mã OTP hết hạn sau 5 phút</p>
+                            <p className="mt-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Thời gian hiệu lực OTP</p>
                         </div>
 
                         <FormInput label="Nhập mã OTP" name="otpCode" value={formData.otpCode} onChange={handleChange} error={errors.otpCode} placeholder="6 chữ số" />

@@ -24,7 +24,7 @@ export const loginUser = createAsyncThunk(
             }
         } catch (error) {
             return rejectWithValue(
-                error?.errMessage || 'Không thể kết nối đến server'
+                error?.response?.data || error?.data || error || 'Không thể kết nối đến server'
             );
         }
     }

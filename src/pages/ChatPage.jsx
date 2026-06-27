@@ -312,7 +312,7 @@ const ChatPage = () => {
                 <div className="text-center bg-white p-8 rounded-3xl border border-slate-200 shadow-xl max-w-sm">
                     <h3 className="text-lg font-bold text-slate-800">Yêu cầu đăng nhập</h3>
                     <p className="text-xs text-slate-500 mt-2">Vui lòng đăng nhập để sử dụng tính năng nhắn tin.</p>
-                    <Link to="/login" className="mt-4 inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition">
+                    <Link to="/login" className="mt-4 inline-block bg-brand-red hover:bg-brand-red/90 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition">
                         Đăng nhập ngay
                     </Link>
                 </div>
@@ -323,20 +323,20 @@ const ChatPage = () => {
     return (
         <div className="h-screen bg-slate-50 flex flex-col font-sans overflow-hidden">
             {/* Header */}
-            <header className="shrink-0 sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
+            <header className="shrink-0 sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur">
                 <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
                     <Link to="/" className="inline-flex items-center gap-3">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-xl font-black text-white shadow-lg shadow-orange-300/40">S</span>
+                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-brand-red to-rose-600 text-xl font-black text-white shadow-lg shadow-brand-red/20">S</span>
                         <div className="text-left">
-                            <div className="text-lg font-black text-slate-900">SmartZone Store</div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-orange-600">Tech Lifestyle</div>
+                            <div className="text-lg font-black text-slate-900 font-sans">SmartZone Store</div>
+                            <div className="text-xs uppercase tracking-[0.2em] text-brand-red font-bold">Tech Lifestyle</div>
                         </div>
                     </Link>
                     <div className="ml-auto flex items-center gap-3">
                         <Link to="/" className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             Trang chủ
                         </Link>
-                        <Link className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700" to="/cart">
+                        <Link className="inline-flex items-center gap-2 rounded-xl border border-brand-red/20 bg-brand-red/5 px-4 py-2 text-sm font-semibold text-brand-red" to="/cart">
                             <ShoppingCartOutlined />
                             <span>Giỏ hàng</span>
                         </Link>
@@ -357,7 +357,7 @@ const ChatPage = () => {
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(true)}
-                                className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 transition"
+                                className="rounded-xl bg-brand-red hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 transition"
                             >
                                 + Chat mới
                             </button>
@@ -379,7 +379,7 @@ const ChatPage = () => {
                                                     setActiveContact(contact);
                                                     navigate('/chat', { replace: true }); // Clear query params if any
                                                 }}
-                                                className={`w-full flex items-center gap-3 px-4 py-4 text-left border-b border-slate-50 transition ${isSelected ? 'bg-orange-50/70 border-l-4 border-l-orange-500' : 'hover:bg-slate-50'
+                                                className={`w-full flex items-center gap-3 px-4 py-4 text-left border-b border-slate-50 transition ${isSelected ? 'bg-brand-red/5 border-l-4 border-l-brand-red' : 'hover:bg-slate-50'
                                                     }`}
                                             >
                                                 {/* Profile Avatar */}
@@ -427,7 +427,7 @@ const ChatPage = () => {
                                     {activeContact.image ? (
                                         <img src={activeContact.image} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-100" />
                                     ) : (
-                                        <div className="grid h-10 w-10 place-items-center rounded-full bg-orange-100 text-orange-600 font-bold">
+                                        <div className="grid h-10 w-10 place-items-center rounded-full bg-brand-red/10 text-brand-red font-bold">
                                             {activeContact.firstName?.charAt(0) || 'C'}
                                         </div>
                                     )}
@@ -462,7 +462,7 @@ const ChatPage = () => {
                                                 return (
                                                     <div key={msg._id || Math.random()} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm shadow-sm text-left ${isMe
-                                                                ? 'bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-br-none shadow-md shadow-orange-500/10'
+                                                                ? 'bg-gradient-to-br from-brand-red to-rose-600 text-white rounded-br-none shadow-md shadow-brand-red/10'
                                                                 : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                                             }`}>
                                                             <div>{msg.content}</div>
@@ -485,7 +485,7 @@ const ChatPage = () => {
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
                                         placeholder={`Nhập phản hồi gửi đến ${activeContact.firstName}...`}
-                                        className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-800 outline-none focus:border-orange-500 focus:bg-white"
+                                        className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-800 outline-none focus:border-brand-red focus:bg-white focus:ring-4 focus:ring-brand-red/5 transition-all"
                                     />
                                     <button
                                         type="submit"
@@ -563,7 +563,7 @@ const ChatPage = () => {
                                         {u.image ? (
                                             <img src={u.image} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-100" />
                                         ) : (
-                                            <div className="grid h-10 w-10 place-items-center rounded-full bg-orange-100 text-orange-600 font-bold text-sm">
+                                            <div className="grid h-10 w-10 place-items-center rounded-full bg-brand-red/10 text-brand-red font-bold text-sm">
                                                 {u.firstName?.charAt(0) || 'U'}
                                             </div>
                                         )}
