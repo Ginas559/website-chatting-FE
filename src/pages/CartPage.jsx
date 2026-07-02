@@ -42,20 +42,25 @@ const CartPage = () => {
 
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const items = Array.isArray(cart.items) ? cart.items : [];
+
     const itemIds = useMemo(() => items.map((item) => String(item.productId)).filter(Boolean), [items]);
     const selectedIdSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
+
     const selectedItems = useMemo(
         () => items.filter((item) => selectedIdSet.has(String(item.productId))),
         [items, selectedIdSet]
     );
+
     const selectedQuantity = useMemo(
         () => selectedItems.reduce((sum, item) => sum + Number(item.quantity || item.qty || 0), 0),
         [selectedItems]
     );
+
     const selectedAmount = useMemo(
         () => selectedItems.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0),
         [selectedItems]
     );
+
     const allSelected = itemIds.length > 0 && selectedProductIds.length === itemIds.length;
 
     useEffect(() => {
@@ -252,7 +257,13 @@ const CartPage = () => {
         }
 
         sessionStorage.setItem(CHECKOUT_SELECTION_KEY, JSON.stringify(selectedProductIds));
-        navigate('/checkout', { state: { selectedProductIds } });
+        navigate('/checkout', {
+            state: {
+                selectedProductIds,
+                selectedItemIds: selectedProductIds,
+                itemIds: selectedProductIds,
+            },
+        });
     };
 
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
@@ -289,13 +300,13 @@ const CartPage = () => {
                         </Link>
                         {isAuthenticated ? (
                             <>
-                                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                                <Link to="/user/profile" className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-orange-200 hover:bg-orange-50">
                                     <div className="grid h-10 w-10 place-items-center rounded-full bg-red-100 font-bold text-red-700">{memberTag}</div>
                                     <div>
                                         <div className="text-xs text-slate-500">Chào bạn,</div>
                                         <div className="font-bold text-slate-900">{memberName}</div>
                                     </div>
-                                </div>
+                                </Link>
                                 <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={onLogout} type="button">
                                     <LogoutOutlined />
                                     <span>Đăng xuất</span>
@@ -335,78 +346,105 @@ const CartPage = () => {
                             <div className="rounded-[32px] border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
                                 <LoadingOutlined className="mr-2" /> Đang tải giỏ hàng...
                             </div>
-                        ) : items.length ? items.map((item) => {
-                            const itemKey = String(item.productId);
-                            const isMutating = mutatingIds.has(itemKey);
-                            const stock = item.availability?.stock;
-                            const remaining = item.availability?.remainingToIncrease;
-                            const canIncrease = item.availability?.canIncrease;
-
-                            return (
-                                <div key={item.id || item.cartItemId || itemKey} className="flex flex-col gap-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 md:self-center">
+                        ) : items.length ? (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between rounded-[24px] border border-slate-200 bg-slate-50/50 p-4 text-left">
+                                    <label className="flex cursor-pointer select-none items-center gap-3">
                                         <input
                                             type="checkbox"
-                                            checked={selectedIdSet.has(itemKey)}
-                                            onChange={() => toggleItemSelection(itemKey)}
-                                            className="h-5 w-5 accent-red-600"
-                                            aria-label={`Chọn ${item.snapshot?.name || 'sản phẩm'}`}
+                                            checked={allSelected}
+                                            onChange={toggleAllSelection}
+                                            className="h-5 w-5 rounded border-slate-300 accent-red-600"
                                         />
+                                        <span className="text-sm font-bold text-slate-700">Chọn tất cả ({items.length} sản phẩm)</span>
                                     </label>
-                                    <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-28 w-24 rounded-2xl object-cover" />
-                                    <div className="flex-1 text-left">
-                                        <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">{item.snapshot?.brand}</div>
-                                        <h2 className="mt-1 text-lg font-bold text-slate-900">{item.snapshot?.name}</h2>
-                                        <p className="text-sm text-slate-500">Giá lưu tại thời điểm thêm vào giỏ</p>
-                                        <div className="mt-2 font-semibold text-red-600">{formatVnd(item.snapshot?.price)}</div>
-                                        <div className="mt-2 text-sm text-slate-500">
-                                            {stock === null || stock === undefined
-                                                ? 'Sản phẩm đã ngừng kinh doanh'
-                                                : remaining > 0
-                                                    ? `Chỉ còn ${remaining} sản phẩm`
-                                                    : 'Đã đạt giới hạn tồn kho'}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col items-start gap-3 md:items-end">
-                                        <div className="inline-flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                            <button
-                                                type="button"
-                                                disabled={isMutating || item.quantity <= 1}
-                                                onClick={() => updateItem(itemKey, Math.max(1, Number(item.quantity || 1) - 1))}
-                                                className="grid h-11 w-11 place-items-center text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                aria-label="Giảm số lượng"
-                                            >
-                                                <MinusOutlined />
-                                            </button>
-                                            <div className="min-w-16 px-4 text-center text-sm font-bold text-slate-900">
-                                                {item.quantity}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                disabled={isMutating || !canIncrease}
-                                                onClick={() => updateItem(itemKey, Number(item.quantity || 0) + 1)}
-                                                className="grid h-11 w-11 place-items-center text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                aria-label="Tăng số lượng"
-                                            >
-                                                <PlusOutlined />
-                                            </button>
-                                        </div>
-
-                                        <div className="text-sm font-semibold text-slate-900">{formatVnd(Number(item.snapshot?.price || 0) * Number(item.quantity || 0))}</div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => removeItem(itemKey)}
-                                            disabled={isMutating}
-                                            className="rounded-2xl bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                        >
-                                            Xóa
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={clearAll}
+                                        className="text-sm font-bold text-rose-600 hover:text-rose-700"
+                                    >
+                                        Xóa tất cả
+                                    </button>
                                 </div>
-                            );
-                        }) : (
+
+                                {items.map((item) => {
+                                    const itemKey = String(item.productId);
+                                    const isMutating = mutatingIds.has(itemKey);
+                                    const stock = item.availability?.stock;
+                                    const remaining = item.availability?.remainingToIncrease;
+                                    const canIncrease = item.availability?.canIncrease;
+                                    const isSelected = selectedIdSet.has(itemKey);
+
+                                    return (
+                                        <div key={item.id || item.cartItemId || itemKey} className="flex flex-col gap-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
+                                            <div className="flex items-center pl-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => toggleItemSelection(itemKey)}
+                                                    disabled={isMutating}
+                                                    className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-red-600 disabled:cursor-not-allowed"
+                                                    aria-label={`Chọn ${item.snapshot?.name || 'sản phẩm'}`}
+                                                />
+                                            </div>
+
+                                            <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-28 w-24 rounded-2xl object-cover" />
+
+                                            <div className="flex-1 text-left">
+                                                <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">{item.snapshot?.brand}</div>
+                                                <h2 className="mt-1 text-lg font-bold text-slate-900">{item.snapshot?.name}</h2>
+                                                <p className="text-sm text-slate-500">Giá lưu tại thời điểm thêm vào giỏ</p>
+                                                <div className="mt-2 font-semibold text-red-600">{formatVnd(item.snapshot?.price)}</div>
+                                                <div className="mt-2 text-sm text-slate-500">
+                                                    {stock === null || stock === undefined
+                                                        ? 'Sản phẩm đã ngừng kinh doanh'
+                                                        : remaining > 0
+                                                            ? `Chỉ còn ${remaining} sản phẩm`
+                                                            : 'Đã đạt giới hạn tồn kho'}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col items-start gap-3 md:items-end">
+                                                <div className="inline-flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                                    <button
+                                                        type="button"
+                                                        disabled={isMutating || item.quantity <= 1}
+                                                        onClick={() => updateItem(itemKey, Math.max(1, Number(item.quantity || 1) - 1))}
+                                                        className="grid h-11 w-11 place-items-center text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        aria-label="Giảm số lượng"
+                                                    >
+                                                        <MinusOutlined />
+                                                    </button>
+                                                    <div className="min-w-16 px-4 text-center text-sm font-bold text-slate-900">
+                                                        {item.quantity}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isMutating || !canIncrease}
+                                                        onClick={() => updateItem(itemKey, Number(item.quantity || 0) + 1)}
+                                                        className="grid h-11 w-11 place-items-center text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        aria-label="Tăng số lượng"
+                                                    >
+                                                        <PlusOutlined />
+                                                    </button>
+                                                </div>
+
+                                                <div className="text-sm font-semibold text-slate-900">{formatVnd(Number(item.snapshot?.price || 0) * Number(item.quantity || 0))}</div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(itemKey)}
+                                                    disabled={isMutating}
+                                                    className="rounded-2xl bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
                             <div className="rounded-[32px] border border-dashed border-orange-200 bg-white px-6 py-16 text-center shadow-sm">
                                 <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-orange-50 text-3xl text-orange-500">
                                     <ShoppingCartOutlined />
@@ -422,8 +460,9 @@ const CartPage = () => {
                         )}
                     </section>
 
-                    <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm text-left">
+                    <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 text-left shadow-sm">
                         <h2 className="text-xl font-bold text-slate-900">Tổng đơn</h2>
+
                         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
                             <span>Chọn tất cả</span>
                             <input
@@ -434,30 +473,35 @@ const CartPage = () => {
                                 className="h-5 w-5 accent-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </label>
+
                         <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
                             <span>Sản phẩm đã chọn</span>
                             <span>{selectedItems.length}/{cart.totalItems || items.length}</span>
                         </div>
+
                         <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
                             <span>Số lượng đã chọn</span>
                             <span>{selectedQuantity}</span>
                         </div>
+
                         <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
                             <span>Tổng tiền đã chọn</span>
                             <span>{formatVnd(selectedAmount)}</span>
                         </div>
+
                         <button
                             type="button"
                             onClick={goToCheckout}
+                            disabled={!selectedProductIds.length || loading}
                             className={`mt-5 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 font-semibold shadow-lg transition ${
                                 selectedProductIds.length && !loading
-                                    ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-700'
+                                    ? 'cursor-pointer bg-red-600 text-white shadow-red-500/20 hover:bg-red-700'
                                     : 'cursor-not-allowed bg-slate-200 text-slate-400 shadow-none'
                             }`}
-                            disabled={!selectedProductIds.length || loading}
                         >
                             Thanh toán
                         </button>
+
                         <button
                             type="button"
                             onClick={clearAll}

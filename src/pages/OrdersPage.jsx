@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
     HomeOutlined,
@@ -210,10 +210,18 @@ const getCancelRequestRejectionEntry = (order) => {
 const hasRejectedCancelRequest = (order) => Boolean(getCancelRequestRejectionEntry(order));
 
 const canShowCancelButton = (order) => {
-    if (order?.status === 'NEW') return true;
-    if (order?.status === 'PREPARING') return !hasRejectedCancelRequest(order);
+    if (['NEW', 'PENDING_PAYMENT'].includes(order?.status)) return true;
+    if (['CONFIRMED', 'PREPARING'].includes(order?.status)) return !hasRejectedCancelRequest(order);
     return false;
 };
+
+const CANCEL_SUGGESTIONS = [
+    'Muốn đổi sản phẩm/màu sắc/cấu hình',
+    'Nhập sai địa chỉ/số điện thoại nhận hàng',
+    'Không còn nhu cầu mua nữa',
+    'Đặt trùng đơn/trùng sản phẩm',
+    'Thay đổi phương thức thanh toán/lỗi giao dịch'
+];
 
 const getFirstItem = (order) => Array.isArray(order?.items) && order.items.length ? order.items[0] : null;
 
@@ -337,6 +345,7 @@ const getShopUpdateEntries = (order) => {
 
 const OrdersPage = () => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const notificationsProps = useNotifications();
     const [orders, setOrders] = useState([]);
@@ -351,7 +360,30 @@ const OrdersPage = () => {
     const [feedback, setFeedback] = useState('');
     const [cancelTarget, setCancelTarget] = useState(null);
     const [cancelReason, setCancelReason] = useState('');
+    const [cancelError, setCancelError] = useState('');
     const statusTabsRef = useRef(null);
+    const [recentOrders, setRecentOrders] = useState([]);
+    const [recentLoading, setRecentLoading] = useState(false);
+    const [recentlyViewed, setRecentlyViewed] = useState([]);
+
+    const refreshRecentOrders = async () => {
+        setRecentLoading(true);
+        try {
+            const response = await getMyOrdersApi({ page: 1, limit: 3, sort: 'recent' });
+            if (response?.errCode === 0 && response?.data) {
+                setRecentOrders(response.data.items || []);
+            }
+        } catch (error) {
+            console.error('Không thể tải đơn hàng gần đây:', error);
+        } finally {
+            setRecentLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        void refreshRecentOrders();
+    }, [isAuthenticated]);
 
     const currentPage = pagination.page || 1;
     const totalPages = Math.max(1, pagination.totalPages || 1);
@@ -403,6 +435,15 @@ const OrdersPage = () => {
             isMounted = false;
         };
     }, [isAuthenticated, navigate, queryParams]);
+
+    useEffect(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem('recentlyViewedOrders') || '[]');
+            setRecentlyViewed(stored);
+        } catch (e) {
+            setRecentlyViewed([]);
+        }
+    }, []);
 
     const refreshOrders = async (params = queryParams) => {
         setLoading(true);
@@ -459,12 +500,51 @@ const OrdersPage = () => {
 
             setSelectedOrder(response.data);
             setViewMode('detail');
+
+            const orderData = response.data;
+            const firstItem = getFirstItem(orderData);
+            const newViewedOrder = {
+                id: orderData.id,
+                orderCode: orderData.orderCode,
+                status: orderData.status,
+                totalAmount: orderData.totalAmount,
+                paymentMethod: orderData.paymentMethod,
+                paymentStatus: orderData.paymentStatus,
+                firstItemImage: firstItem?.snapshot?.image || '',
+                firstItemName: firstItem?.snapshot?.name || '',
+                viewedAt: Date.now()
+            };
+
+            let viewedOrders = [];
+            try {
+                viewedOrders = JSON.parse(localStorage.getItem('recentlyViewedOrders') || '[]');
+            } catch (e) {
+                viewedOrders = [];
+            }
+
+            viewedOrders = viewedOrders.filter(o => o.orderCode !== newViewedOrder.orderCode);
+            viewedOrders.unshift(newViewedOrder);
+            viewedOrders = viewedOrders.slice(0, 3);
+
+            localStorage.setItem('recentlyViewedOrders', JSON.stringify(viewedOrders));
+            setRecentlyViewed(viewedOrders);
         } catch (error) {
             setFeedback(getErrorMessage(error, 'Không thể tải chi tiết đơn hàng.'));
         } finally {
             setDetailLoading(false);
         }
     };
+ 
+    useEffect(() => {
+        const code = searchParams.get('code');
+        if (code) {
+            openDetail(code);
+            // Clear URL param
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('code');
+            setSearchParams(newParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     const backToHistory = () => {
         setViewMode('history');
@@ -474,6 +554,7 @@ const OrdersPage = () => {
     const openCancelModal = (order) => {
         setCancelTarget(order);
         setCancelReason('');
+        setCancelError('');
         setFeedback('');
     };
 
@@ -481,26 +562,37 @@ const OrdersPage = () => {
         if (mutating) return;
         setCancelTarget(null);
         setCancelReason('');
+        setCancelError('');
     };
 
     const confirmCancelOrder = async () => {
         if (!cancelTarget) return;
+
+        const cleanReason = String(cancelReason || '').trim();
+        if (!cleanReason) {
+            setCancelError('Vui lòng chọn gợi ý bên dưới hoặc nhập lý do hủy đơn hàng.');
+            return;
+        }
+
         setMutating(true);
+        setCancelError('');
         setFeedback('');
 
         try {
-            const response = await cancelMyOrderApi(cancelTarget.orderCode || cancelTarget.id, cancelReason);
+            const response = await cancelMyOrderApi(cancelTarget.orderCode || cancelTarget.id, cleanReason);
             if (response?.errCode !== 0 || !response?.data) {
                 throw response;
             }
 
             setSelectedOrder(response.data);
             await refreshOrders(queryParams);
+            await refreshRecentOrders();
             setFeedback(response.errMessage || 'Cập nhật yêu cầu hủy đơn thành công.');
             setCancelTarget(null);
             setCancelReason('');
+            setCancelError('');
         } catch (error) {
-            setFeedback(getErrorMessage(error, 'Không thể hủy đơn hàng.'));
+            setCancelError(getErrorMessage(error, 'Không thể hủy đơn hàng.'));
         } finally {
             setMutating(false);
         }
@@ -563,7 +655,7 @@ const OrdersPage = () => {
             <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6">
                 <section className="rounded-2xl border border-slate-300 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
                     <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr_1fr] lg:items-center">
-                        <div className="flex items-center gap-4">
+                        <Link to="/user/profile" className="flex items-center gap-4 rounded-2xl px-2 py-2 transition hover:bg-orange-50">
                             <div className="grid h-16 w-16 place-items-center rounded-full bg-red-50 text-2xl font-bold text-red-600">
                                 {memberName.charAt(0).toUpperCase() || 'M'}
                             </div>
@@ -572,7 +664,7 @@ const OrdersPage = () => {
                                 <div className="mt-1 text-sm text-slate-500">{memberPhone}</div>
                                 <div className="mt-2 inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600">S-Member</div>
                             </div>
-                        </div>
+                        </Link>
                         <div className="border-l-0 border-red-500 pl-0 lg:border-l-2 lg:pl-6">
                             <div className="text-3xl font-medium">{summary.totalPurchasedOrders || 0}</div>
                             <div className="mt-1 text-sm text-slate-500">Tổng đơn đã mua thành công</div>
@@ -654,6 +746,87 @@ const OrdersPage = () => {
                                 </div>
 
                                 <div className="mt-3 space-y-3">
+                                    {recentOrders.length > 0 && (
+                                        <div className="mb-6 rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-left">
+                                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                                <span>⏱️</span> Đơn hàng vừa đặt hoặc gần đây
+                                            </h2>
+                                            <p className="text-xs text-slate-500 mt-1">Truy cập nhanh các đơn hàng bạn mới tạo hoặc cập nhật gần nhất.</p>
+                                            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                                                {recentOrders.map((order) => {
+                                                    const firstItem = getFirstItem(order);
+                                                    return (
+                                                        <div 
+                                                            key={`recent-${order.id || order.orderCode}`}
+                                                            className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:border-orange-300 transition cursor-pointer"
+                                                            onClick={() => openDetail(order.orderCode || order.id)}
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center justify-between gap-1 text-[11px]">
+                                                                    <span className="font-bold text-slate-900">#{order.orderCode}</span>
+                                                                    <span className={`rounded px-1.5 py-0.5 font-medium scale-90 ${STATUS_STYLES[order.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                                        {getOrderStatusLabel(order)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="mt-2 flex items-center gap-2">
+                                                                    <img src={firstItem?.snapshot?.image} alt="" className="h-10 w-10 shrink-0 rounded object-contain" />
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="truncate text-xs font-semibold text-slate-700 uppercase">{firstItem?.snapshot?.name || 'Sản phẩm'}</div>
+                                                                        <div className="text-xs font-bold text-red-600 mt-0.5">{formatVnd(order.totalAmount)}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-3 border-t border-slate-100 pt-2 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                                                                <span>{formatDateTime(order.createdAt).split(' ')[1]}</span>
+                                                                <span className="text-orange-600 hover:underline">Chi tiết &rarr;</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {recentlyViewed.length > 0 && (
+                                        <div className="mb-6 rounded-2xl border border-sky-100 bg-sky-50/30 p-4 text-left">
+                                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                                <span>👀</span> Đơn hàng đã xem gần đây
+                                            </h2>
+                                            <p className="text-xs text-slate-500 mt-1">Các đơn hàng bạn vừa click vào xem chi tiết.</p>
+                                            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                                                {recentlyViewed.map((order) => {
+                                                    return (
+                                                        <div 
+                                                            key={`viewed-${order.orderCode}`}
+                                                            className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:border-sky-300 transition cursor-pointer"
+                                                            onClick={() => openDetail(order.orderCode || order.id)}
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center justify-between gap-1 text-[11px]">
+                                                                    <span className="font-bold text-slate-900">#{order.orderCode}</span>
+                                                                    <span className={`rounded px-1.5 py-0.5 font-medium scale-90 ${STATUS_STYLES[order.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                                        {getStatusLabel(order.status)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="mt-2 flex items-center gap-2">
+                                                                    <img src={order.firstItemImage} alt="" className="h-10 w-10 shrink-0 rounded object-contain" />
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="truncate text-xs font-semibold text-slate-700 uppercase">{order.firstItemName || 'Sản phẩm'}</div>
+                                                                        <div className="text-xs font-bold text-red-600 mt-0.5">{formatVnd(order.totalAmount)}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-3 border-t border-slate-100 pt-2 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                                                                <span>Xem gần nhất</span>
+                                                                <span className="text-sky-600 hover:underline">Chi tiết &rarr;</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="flex flex-wrap items-center gap-4">
                                         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Lịch sử mua hàng</h1>
                                     </div>
@@ -689,7 +862,16 @@ const OrdersPage = () => {
                                                 </div>
                                                 <div className="shrink-0 text-left sm:text-right">
                                                     <div className="text-sm text-slate-500">Tổng thanh toán</div>
-                                                    <div className="text-base font-medium text-red-600">{formatVnd(order.totalAmount)}</div>
+                                                    <div className="flex items-baseline justify-start gap-2 sm:justify-end">
+                                                        {order.discountAmount > 0 && (
+                                                            <span className="text-xs text-slate-400 line-through">
+                                                                {formatVnd(order.totalAmount + order.discountAmount)}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-base font-medium text-red-600">
+                                                            {formatVnd(order.totalAmount)}
+                                                        </span>
+                                                    </div>
                                                     <div className="mt-2 flex flex-wrap justify-start gap-2 sm:justify-end">
                                                         {canReviewOrder(order) && firstItem?.snapshot?.slug ? (
                                                             <Link
@@ -728,7 +910,7 @@ const OrdersPage = () => {
                                                         disabled={mutating}
                                                         className="rounded-lg border border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                                                     >
-                                                        {order.status === 'PREPARING' ? 'Gửi yêu cầu hủy' : 'Hủy đơn'}
+                                                        {['CONFIRMED', 'PREPARING'].includes(order.status) ? 'Gửi yêu cầu hủy' : 'Hủy đơn'}
                                                     </button>
                                                 </div>
                                             ) : null}
@@ -781,7 +963,20 @@ const OrdersPage = () => {
                                     <div className="text-left text-lg font-semibold text-slate-950 sm:flex-1 sm:text-center">
                                         Chi tiết đơn hàng
                                     </div>
-                                    <div className="hidden w-[150px] sm:block" />
+                                    <div className="flex w-full justify-start sm:w-auto sm:justify-end">
+                                        {selectedOrder && canShowCancelButton(selectedOrder) ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => openCancelModal(selectedOrder)}
+                                                disabled={mutating}
+                                                className="w-full sm:w-auto rounded-lg border border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {['CONFIRMED', 'PREPARING'].includes(selectedOrder.status) ? 'Gửi yêu cầu hủy' : 'Hủy đơn'}
+                                            </button>
+                                        ) : (
+                                            <div className="hidden w-[150px] sm:block" />
+                                        )}
+                                    </div>
                                 </div>
 
                                 {detailLoading || !selectedOrder ? (
@@ -943,6 +1138,19 @@ const OrdersPage = () => {
                                                 <div className="text-base font-medium">Thông tin thanh toán</div>
                                                 <div className="mt-4 divide-y divide-slate-200 text-sm">
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Số lượng sản phẩm</span><b>{selectedOrder.items?.length || 0}</b></div>
+                                                    <div className="flex justify-between py-3"><span className="text-slate-500">Tạm tính</span><b>{formatVnd(selectedOrder.subtotal || 0)}</b></div>
+                                                    {selectedOrder.couponDiscount > 0 && (
+                                                        <div className="flex justify-between py-3">
+                                                            <span className="text-slate-500">Giảm giá voucher ({selectedOrder.couponCode})</span>
+                                                            <b className="text-emerald-600">-{formatVnd(selectedOrder.couponDiscount)}</b>
+                                                        </div>
+                                                    )}
+                                                    {selectedOrder.pointsDiscount > 0 && (
+                                                        <div className="flex justify-between py-3">
+                                                            <span className="text-slate-500">Giảm giá điểm ({selectedOrder.pointsUsed || 0} điểm)</span>
+                                                            <b className="text-emerald-600">-{formatVnd(selectedOrder.pointsDiscount)}</b>
+                                                        </div>
+                                                    )}
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Phương thức</span><b>{selectedOrder.paymentMethod}</b></div>
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Trạng thái</span><b>{getPaymentStatusLabel(selectedOrder)}</b></div>
                                                     <div className="flex justify-between py-3"><span className="text-slate-500">Tổng số tiền</span><b className="text-red-600">{formatVnd(selectedOrder.totalAmount)}</b></div>
@@ -962,8 +1170,8 @@ const OrdersPage = () => {
                     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-950/20">
                         <div className="text-center">
                             <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-xl font-semibold text-red-600">!</div>
-                            <h2 className="mt-4 text-xl font-semibold text-slate-950">
-                                {cancelTarget.status === 'PREPARING' ? 'Gửi yêu cầu hủy đơn?' : 'Xác nhận hủy đơn?'}
+                             <h2 className="mt-4 text-xl font-semibold text-slate-950">
+                                {['CONFIRMED', 'PREPARING'].includes(cancelTarget.status) ? 'Gửi yêu cầu hủy đơn?' : 'Xác nhận hủy đơn?'}
                             </h2>
                             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
                                 Đơn hàng <span className="font-medium text-slate-900">#{cancelTarget.orderCode}</span> sẽ được cập nhật theo đúng trạng thái hiện tại.
@@ -971,15 +1179,53 @@ const OrdersPage = () => {
                         </div>
 
                         <label className="mt-5 block text-left">
-                            <span className="mb-2 block text-sm font-medium text-slate-700">Lý do hủy (không bắt buộc)</span>
+                            <span className="mb-2 block text-sm font-medium text-slate-700">
+                                Lý do hủy <span className="text-red-500 font-bold">*</span>
+                            </span>
                             <textarea
                                 value={cancelReason}
-                                onChange={(event) => setCancelReason(event.target.value)}
+                                onChange={(event) => {
+                                    setCancelReason(event.target.value);
+                                    setCancelError('');
+                                }}
                                 rows={3}
-                                className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                placeholder="Ví dụ: muốn đổi sản phẩm, nhập sai địa chỉ..."
+                                className={`w-full resize-none rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+                                    cancelError 
+                                        ? 'border-red-500 focus:border-red-500 focus:ring-red-100' 
+                                        : 'border-slate-300 focus:border-red-500 focus:ring-red-100'
+                                }`}
+                                placeholder="Vui lòng chọn gợi ý hoặc nhập lý do chi tiết tại đây..."
                             />
                         </label>
+
+                        {cancelError && (
+                            <div className="mt-2 text-left text-xs font-semibold text-red-600">
+                                ⚠️ {cancelError}
+                            </div>
+                        )}
+
+                        <div className="mt-3 text-left">
+                            <span className="block text-xs font-semibold text-slate-400 mb-2">Gợi ý nhanh lý do hủy:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                                {CANCEL_SUGGESTIONS.map((suggestion) => (
+                                    <button
+                                        key={suggestion}
+                                        type="button"
+                                        onClick={() => {
+                                            setCancelReason(suggestion);
+                                            setCancelError('');
+                                        }}
+                                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+                                            cancelReason === suggestion
+                                                ? 'border-red-200 bg-red-50 text-red-600 shadow-sm'
+                                                : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
                         <div className="mt-5 grid gap-3 sm:grid-cols-2">
                             <button
@@ -996,7 +1242,7 @@ const OrdersPage = () => {
                                 disabled={mutating}
                                 className="h-12 rounded-xl bg-red-600 px-4 text-sm font-medium text-white shadow-lg shadow-red-200 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {mutating ? 'Đang xử lý...' : cancelTarget.status === 'PREPARING' ? 'Gửi yêu cầu hủy' : 'Xác nhận hủy'}
+                                {mutating ? 'Đang xử lý...' : ['CONFIRMED', 'PREPARING'].includes(cancelTarget.status) ? 'Gửi yêu cầu hủy' : 'Xác nhận hủy'}
                             </button>
                         </div>
                     </div>

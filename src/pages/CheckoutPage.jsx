@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
-import { checkoutOrderApi } from '../util/api';
+import { checkoutOrderApi, getMyVouchersApi, previewCheckoutApi } from '../util/api';
+import { message } from 'antd';
 import { fetchCart, getCartSnapshot, resetCartCache } from '../util/cart';
 
 const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
@@ -11,6 +12,30 @@ const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     currency: 'VND',
     maximumFractionDigits: 0,
 });
+
+const normalizeAvailableVouchers = (payload) => {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    const systemVouchers = Array.isArray(payload?.systemVouchers) ? payload.systemVouchers : [];
+    const reviewCoupons = Array.isArray(payload?.reviewCoupons) ? payload.reviewCoupons : [];
+
+    return [
+        ...systemVouchers,
+        ...reviewCoupons.map((coupon) => ({
+            _id: coupon.code,
+            code: coupon.code,
+            description: `Voucher thưởng đánh giá ${coupon.discountPercent || 0}%`,
+            discountType: 'PERCENT',
+            discountValue: coupon.discountPercent || 0,
+            maxDiscountAmount: 0,
+            minOrderAmount: coupon.minOrderAmount || 0,
+            endDate: coupon.expiresAt,
+            isRewardCoupon: true,
+        })),
+    ];
+};
 
 const initialForm = {
     fullName: '',
@@ -108,13 +133,18 @@ const CheckoutPage = () => {
     const location = useLocation();
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+
     const [selectedProductIds, setSelectedProductIds] = useState(() => {
-        const routeSelection = location.state?.selectedProductIds;
+        const routeSelection =
+            location.state?.selectedProductIds ||
+            location.state?.selectedItemIds ||
+            location.state?.itemIds;
 
         return Array.isArray(routeSelection)
             ? routeSelection.map((productId) => String(productId)).filter(Boolean)
             : getStoredCheckoutSelection();
     });
+
     const [cart, setCart] = useState(() => getCartSnapshot());
     const [form, setForm] = useState(() => ({
         ...initialForm,
@@ -129,23 +159,36 @@ const CheckoutPage = () => {
     const [createdOrder, setCreatedOrder] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('COD');
 
+    // Tien - Các trạng thái quản lý khuyến mãi & ưu đãi
+    const [vouchers, setVouchers] = useState([]);
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState('');
+    const [usePoints, setUsePoints] = useState(false);
+    const [pointsToUse, setPointsToUse] = useState(0);
+    const [previewResult, setPreviewResult] = useState(null);
+
     const cartItems = Array.isArray(cart.items) ? cart.items : [];
+
     const selectedIdSet = useMemo(() => (
         selectedProductIds.length ? new Set(selectedProductIds) : null
     ), [selectedProductIds]);
+
     const items = useMemo(() => (
         selectedIdSet
             ? cartItems.filter((item) => selectedIdSet.has(String(item.productId)))
             : cartItems
     ), [cartItems, selectedIdSet]);
+
     const checkoutProductIds = useMemo(
         () => items.map((item) => String(item.productId)).filter(Boolean),
         [items]
     );
+
     const subtotal = useMemo(
         () => items.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0),
         [items]
     );
+
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
 
@@ -164,7 +207,9 @@ const CheckoutPage = () => {
             try {
                 const snapshot = await fetchCart();
                 if (!isMounted) return;
+
                 setCart(snapshot);
+
                 if (selectedProductIds.length) {
                     const availableIds = new Set((snapshot.items || []).map((item) => String(item.productId)));
                     const availableSelection = selectedProductIds.filter((productId) => availableIds.has(productId));
@@ -191,6 +236,148 @@ const CheckoutPage = () => {
             isMounted = false;
         };
     }, [isAuthenticated, navigate]);
+
+    // Tien - Tải danh sách voucher khả dụng của thành viên
+    useEffect(() => {
+        const loadVouchers = async () => {
+            try {
+                const res = await getMyVouchersApi();
+                setVouchers(normalizeAvailableVouchers(res?.data));
+            } catch (err) {
+                console.error('Không thể lấy danh sách voucher khả dụng:', err);
+            }
+        };
+
+        if (isAuthenticated) {
+            void loadVouchers();
+        }
+    }, [isAuthenticated]);
+
+    // Tien - Hàm xem trước tính toán giá trị đơn hàng
+    const triggerPreview = async (code, points, pToUse) => {
+        try {
+            const previewShipping = {
+                fullName: form.fullName.trim().length >= 2 ? form.fullName.trim() : 'Khách hàng',
+                phone: /^[0-9+\-\s()]{8,20}$/.test(form.phone.trim()) ? form.phone.trim() : '0900000000',
+                address: form.address.trim().length >= 8 ? form.address.trim() : '123 Địa chỉ mặc định',
+                city: form.city.trim() || 'Hồ Chí Minh',
+                note: form.note.trim(),
+            };
+
+            const res = await previewCheckoutApi({
+                shippingInfo: previewShipping,
+                couponCode: code,
+                usePoints: points,
+                pointsToUse: pToUse !== undefined ? pToUse : (points ? pointsToUse : 0),
+                selectedProductIds: checkoutProductIds,
+                itemIds: checkoutProductIds,
+            });
+
+            if (res?.errCode === 0 && res?.data) {
+                setPreviewResult(res.data);
+            }
+        } catch (err) {
+            console.error('Lỗi tính toán xem trước đơn hàng:', err);
+            const errMsg = getErrorMessage(err, 'Không thể tính toán đơn hàng.');
+            message.error(errMsg);
+        }
+    };
+
+    // Tien - Thay đổi việc dùng điểm tích lũy
+    const handleTogglePoints = (e) => {
+        const checked = e.target.checked;
+        setUsePoints(checked);
+        setFeedback('');
+
+        const initialPoints = checked ? (user?.rewardPoints || 0) : 0;
+        setPointsToUse(initialPoints);
+        void triggerPreview(appliedCoupon, checked, initialPoints);
+    };
+
+    const handlePointsInputChange = (e) => {
+        const val = e.target.value;
+
+        if (val === '') {
+            setPointsToUse('');
+            return;
+        }
+
+        let parsed = parseInt(val, 10);
+        if (Number.isNaN(parsed) || parsed < 0) {
+            parsed = 0;
+        }
+
+        const maxPoints = user?.rewardPoints || 0;
+        if (parsed > maxPoints) {
+            parsed = maxPoints;
+        }
+
+        setPointsToUse(parsed);
+        void triggerPreview(appliedCoupon, usePoints, parsed);
+    };
+
+    const handlePointsInputBlur = () => {
+        if (pointsToUse === '') {
+            setPointsToUse(0);
+            void triggerPreview(appliedCoupon, usePoints, 0);
+        }
+    };
+
+    const handleApplyMaxPoints = () => {
+        const maxPoints = user?.rewardPoints || 0;
+        setPointsToUse(maxPoints);
+        void triggerPreview(appliedCoupon, usePoints, maxPoints);
+    };
+
+    // Tien - Áp dụng mã giảm giá có kiểm tra và bật popup lỗi nếu không thỏa điều kiện
+    const handleApplyCoupon = async (code) => {
+        const cleanCode = String(code || '').trim().toUpperCase();
+        if (!cleanCode) return;
+
+        setLoading(true);
+
+        try {
+            const previewShipping = {
+                fullName: form.fullName.trim().length >= 2 ? form.fullName.trim() : 'Khách hàng',
+                phone: /^[0-9+\-\s()]{8,20}$/.test(form.phone.trim()) ? form.phone.trim() : '0900000000',
+                address: form.address.trim().length >= 8 ? form.address.trim() : '123 Địa chỉ mặc định',
+                city: form.city.trim() || 'Hồ Chí Minh',
+                note: form.note.trim(),
+            };
+
+            const res = await previewCheckoutApi({
+                shippingInfo: previewShipping,
+                couponCode: cleanCode,
+                usePoints,
+                pointsToUse: usePoints ? pointsToUse : 0,
+                selectedProductIds: checkoutProductIds,
+                itemIds: checkoutProductIds,
+            });
+
+            if (res?.errCode === 0 && res?.data) {
+                setPreviewResult(res.data);
+                setAppliedCoupon(cleanCode);
+                setFeedback('');
+                message.success(`Đã áp dụng mã giảm giá ${cleanCode}`);
+            }
+        } catch (err) {
+            console.error('Lỗi khi áp dụng mã giảm giá:', err);
+            const errMsg = getErrorMessage(err, 'Mã giảm giá không hợp lệ hoặc chưa đủ điều kiện áp dụng.');
+            message.error(errMsg);
+            setAppliedCoupon('');
+            setCouponCode('');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Tien - Hủy áp dụng mã giảm giá
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon('');
+        setCouponCode('');
+        setFeedback('');
+        void triggerPreview('', usePoints, pointsToUse);
+    };
 
     const onLogout = async () => {
         await dispatch(logoutUser());
@@ -236,6 +423,10 @@ const CheckoutPage = () => {
             const response = await checkoutOrderApi({
                 paymentMethod,
                 selectedProductIds: checkoutProductIds,
+                itemIds: checkoutProductIds,
+                couponCode: appliedCoupon,
+                usePoints,
+                pointsToUse: usePoints ? (parseInt(pointsToUse, 10) || 0) : 0,
                 shippingInfo: {
                     fullName: form.fullName.trim(),
                     phone: form.phone.trim(),
@@ -261,10 +452,12 @@ const CheckoutPage = () => {
             }
 
             sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
+
             const nextCart = await fetchCart().catch(() => {
                 resetCartCache();
                 return getCartSnapshot();
             });
+
             setCart(nextCart);
             setCreatedOrder(response.data);
         } catch (error) {
@@ -328,13 +521,13 @@ const CheckoutPage = () => {
                     </Link>
 
                     <div className="ml-auto flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                        <Link to="/user/profile" className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-orange-200 hover:bg-orange-50">
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-red-100 font-bold text-red-700">{memberTag}</div>
                             <div>
                                 <div className="text-xs text-slate-500">Thanh toán bởi</div>
                                 <div className="font-bold text-slate-900">{memberName}</div>
                             </div>
-                        </div>
+                        </Link>
                         <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" onClick={onLogout} type="button">
                             <LogoutOutlined />
                             Đăng xuất
@@ -436,6 +629,119 @@ const CheckoutPage = () => {
                                 </span>
                             </label>
                         </div>
+
+                        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Khuyến mãi & Ưu đãi</h3>
+                                <p className="text-xs text-slate-500 mt-1">Chọn hoặc nhập mã giảm giá, sử dụng điểm tích lũy thành viên.</p>
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-4">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={usePoints}
+                                        onChange={handleTogglePoints}
+                                        disabled={!user?.rewardPoints || user.rewardPoints <= 0}
+                                        className="h-5 w-5 rounded accent-red-600 cursor-pointer disabled:cursor-not-allowed"
+                                    />
+                                    <div>
+                                        <span className="block font-bold text-slate-900 text-sm">
+                                            Dùng điểm tích lũy (Bạn có: {user?.rewardPoints || 0} điểm)
+                                        </span>
+                                        <span className="block text-xs text-slate-500 mt-0.5">
+                                            Tỷ lệ quy đổi: 1 điểm = 1,000đ
+                                        </span>
+                                    </div>
+                                </label>
+
+                                {usePoints && user?.rewardPoints > 0 && (
+                                    <div className="mt-3 pl-8 space-y-2 animate-fadeIn transition-all duration-300">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={user?.rewardPoints || 0}
+                                                value={pointsToUse}
+                                                onChange={handlePointsInputChange}
+                                                onBlur={handlePointsInputBlur}
+                                                className="w-32 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-red-500"
+                                            />
+                                            <span className="text-sm font-medium text-slate-600">điểm</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleApplyMaxPoints}
+                                                className="text-xs font-semibold text-red-600 hover:text-red-700 transition"
+                                            >
+                                                Dùng tối đa
+                                            </button>
+                                        </div>
+                                        <div className="text-xs font-semibold text-emerald-600">
+                                            Giảm giá quy đổi: -{formatVnd((parseInt(pointsToUse, 10) || 0) * 1000)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-4 space-y-3">
+                                <span className="block font-bold text-slate-900 text-sm">Mã giảm giá (Voucher)</span>
+
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value)}
+                                        placeholder="Nhập mã giảm giá..."
+                                        disabled={!!appliedCoupon}
+                                        className="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none uppercase font-mono disabled:bg-slate-100 disabled:text-slate-500"
+                                    />
+                                    {appliedCoupon ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveCoupon}
+                                            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100"
+                                        >
+                                            Hủy áp dụng
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleApplyCoupon(couponCode)}
+                                            disabled={!couponCode}
+                                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                                        >
+                                            Áp dụng
+                                        </button>
+                                    )}
+                                </div>
+
+                                {appliedCoupon && (
+                                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-800 flex items-center justify-between">
+                                        <span>Đã áp dụng mã: <span className="font-mono">{appliedCoupon}</span></span>
+                                        <span>-{formatVnd(previewResult?.couponDiscount || 0)}</span>
+                                    </div>
+                                )}
+
+                                {vouchers.length > 0 && (
+                                    <div className="mt-3">
+                                        <span className="block text-xs text-slate-500 mb-2 font-semibold">Voucher khả dụng của bạn:</span>
+                                        <div className="grid gap-2 sm:grid-cols-2 max-h-40 overflow-y-auto pr-1">
+                                            {vouchers.map((v) => (
+                                                <div
+                                                    key={v._id}
+                                                    onClick={() => !appliedCoupon && handleApplyCoupon(v.code)}
+                                                    className={`border rounded-xl p-3 text-left transition cursor-pointer select-none ${appliedCoupon === v.code ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:border-red-500 bg-slate-50/50'}`}
+                                                >
+                                                    <div className="font-mono font-bold text-xs text-slate-900">{v.code}</div>
+                                                    <div className="text-[10px] text-slate-500 mt-1 line-clamp-1">{v.description}</div>
+                                                    <div className="text-[10px] text-red-600 font-bold mt-1">Đơn tối thiểu: {formatVnd(v.minOrderAmount)}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </form>
 
                     <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 text-left shadow-sm">
@@ -465,13 +771,27 @@ const CheckoutPage = () => {
                                         <span>Tạm tính</span>
                                         <span>{formatVnd(subtotal)}</span>
                                     </div>
+                                    {previewResult?.couponDiscount > 0 && (
+                                        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+                                            <span>Giảm giá voucher ({appliedCoupon})</span>
+                                            <span className="text-emerald-600">-{formatVnd(previewResult.couponDiscount)}</span>
+                                        </div>
+                                    )}
+                                    {previewResult?.pointsDiscount > 0 && (
+                                        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+                                            <span>Giảm giá điểm tích lũy</span>
+                                            <span className="text-emerald-600">-{formatVnd(previewResult.pointsDiscount)}</span>
+                                        </div>
+                                    )}
                                     <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
                                         <span>Phí vận chuyển</span>
                                         <span>{formatVnd(0)}</span>
                                     </div>
                                     <div className="mt-4 flex items-center justify-between text-base font-black text-slate-900">
                                         <span>Tổng thanh toán</span>
-                                        <span className="text-red-600">{formatVnd(subtotal)}</span>
+                                        <span className="text-red-600">
+                                            {formatVnd(previewResult?.totalAmount !== undefined ? previewResult.totalAmount : subtotal)}
+                                        </span>
                                     </div>
                                 </div>
 

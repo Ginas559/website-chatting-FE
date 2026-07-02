@@ -112,7 +112,7 @@ export const NotificationBell = ({
                                     {/* Description */}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-bold text-slate-900 truncate">{notif.title}</p>
-                                        <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">
+                                        <p className="text-xs text-slate-600 mt-1 leading-relaxed break-words">
                                             {notif.content}
                                         </p>
                                         <span className="text-[10px] text-slate-400 font-medium mt-2 block">

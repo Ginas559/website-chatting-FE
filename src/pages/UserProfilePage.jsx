@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { HeartFilled, HeartOutlined, LoadingOutlined } from '@ant-design/icons';
-import { HomeOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
+import { GiftOutlined, HomeOutlined, LogoutOutlined, SearchOutlined, ShoppingCartOutlined, SnippetsOutlined } from '@ant-design/icons';
 import { fetchUserProfile, logoutUser } from '../redux/slices/authSlice';
 import { clearProfileFeedback, fetchProfile, resetProfileState, saveProfile } from '../redux/slices/profileSlice';
 import ProfileInput from '../components/profile/ProfileInput';
@@ -372,6 +372,10 @@ const UserProfilePage = () => {
                         <Link to="/orders" className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100">
                             <SnippetsOutlined />
                             Đơn hàng
+                        </Link>
+                        <Link to="/loyalty" className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                            <GiftOutlined />
+                            Ưu đãi
                         </Link>
                         <Link to="/cart" className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100">
                             <ShoppingCartOutlined />

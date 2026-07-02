@@ -6,8 +6,17 @@ export const ToastNotification = ({ toastMessage = null, setToastMessage }) => {
     const [isVisible, setIsVisible] = useState(false);
     const navigate = useNavigate();
 
+    const handleClose = () => {
+        setIsVisible(false);
+        // Delay clearing the message to allow closing animation to complete
+        setTimeout(() => {
+            setToastMessage(null);
+        }, 3000);
+    };
+
     useEffect(() => {
         if (!toastMessage) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsVisible(false);
             return;
         }
@@ -21,15 +30,8 @@ export const ToastNotification = ({ toastMessage = null, setToastMessage }) => {
         }, 6000);
 
         return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toastMessage]);
-
-    const handleClose = () => {
-        setIsVisible(false);
-        // Delay clearing the message to allow closing animation to complete
-        setTimeout(() => {
-            setToastMessage(null);
-        }, 3000);
-    };
 
     const handleToastClick = () => {
         if (toastMessage?.link) {
@@ -59,7 +61,7 @@ export const ToastNotification = ({ toastMessage = null, setToastMessage }) => {
             >
                 <p className="text-xs font-black uppercase tracking-wider text-orange-600">Thông báo mới</p>
                 <h4 className="text-sm font-bold text-slate-900 mt-0.5 truncate">{toastMessage.title}</h4>
-                <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">{toastMessage.content}</p>
+                <p className="text-xs text-slate-600 mt-1 line-clamp-4 leading-relaxed">{toastMessage.content}</p>
                 <span className="text-[10px] text-slate-400 mt-2 block font-semibold hover:underline">
                     Bấm để xem ngay &rarr;
                 </span>
