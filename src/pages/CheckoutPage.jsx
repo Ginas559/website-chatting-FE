@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
 import { checkoutOrderApi, getMyVouchersApi, previewCheckoutApi } from '../util/api';
-import { Popconfirm, message } from 'antd';
+import { message } from 'antd';
 import { fetchCart, getCartSnapshot, resetCartCache } from '../util/cart';
 
 const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
@@ -45,6 +45,56 @@ const initialForm = {
     note: '',
 };
 
+const CHECKOUT_SELECTION_KEY = 'smartzone.checkout.selectedProductIds';
+
+const VIETNAM_PROVINCES = [
+    'An Giang',
+    'Bắc Ninh',
+    'Cà Mau',
+    'Cao Bằng',
+    'Cần Thơ',
+    'Đà Nẵng',
+    'Đắk Lắk',
+    'Điện Biên',
+    'Đồng Nai',
+    'Đồng Tháp',
+    'Gia Lai',
+    'Hà Nội',
+    'Hà Tĩnh',
+    'Hải Phòng',
+    'Hồ Chí Minh',
+    'Huế',
+    'Hưng Yên',
+    'Khánh Hòa',
+    'Lai Châu',
+    'Lâm Đồng',
+    'Lạng Sơn',
+    'Lào Cai',
+    'Nghệ An',
+    'Ninh Bình',
+    'Phú Thọ',
+    'Quảng Ngãi',
+    'Quảng Ninh',
+    'Quảng Trị',
+    'Sơn La',
+    'Tây Ninh',
+    'Thái Nguyên',
+    'Thanh Hóa',
+    'Tuyên Quang',
+    'Vĩnh Long',
+];
+
+const getStoredCheckoutSelection = () => {
+    try {
+        const rawValue = sessionStorage.getItem(CHECKOUT_SELECTION_KEY);
+        const parsedValue = rawValue ? JSON.parse(rawValue) : [];
+
+        return Array.isArray(parsedValue) ? parsedValue.map((productId) => String(productId)).filter(Boolean) : [];
+    } catch {
+        return [];
+    }
+};
+
 const getErrorMessage = (error, fallback) => {
     if (!error) return fallback;
     if (typeof error === 'string') return error;
@@ -67,8 +117,8 @@ const validateForm = (values) => {
         errors.address = 'Địa chỉ nhận hàng cần rõ hơn.';
     }
 
-    if (values.city.trim().length > 80) {
-        errors.city = 'Tỉnh/thành phố quá dài.';
+    if (!VIETNAM_PROVINCES.includes(values.city.trim())) {
+        errors.city = 'Chọn tỉnh/thành phố trong danh sách.';
     }
 
     if (values.note.trim().length > 300) {
@@ -80,9 +130,21 @@ const validateForm = (values) => {
 
 const CheckoutPage = () => {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
     const location = useLocation();
+    const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+
+    const [selectedProductIds, setSelectedProductIds] = useState(() => {
+        const routeSelection =
+            location.state?.selectedProductIds ||
+            location.state?.selectedItemIds ||
+            location.state?.itemIds;
+
+        return Array.isArray(routeSelection)
+            ? routeSelection.map((productId) => String(productId)).filter(Boolean)
+            : getStoredCheckoutSelection();
+    });
+
     const [cart, setCart] = useState(() => getCartSnapshot());
     const [form, setForm] = useState(() => ({
         ...initialForm,
@@ -105,22 +167,28 @@ const CheckoutPage = () => {
     const [pointsToUse, setPointsToUse] = useState(0);
     const [previewResult, setPreviewResult] = useState(null);
 
-    const selectedItemIds = useMemo(() => {
-        return location.state?.selectedItemIds || [];
-    }, [location.state]);
+    const cartItems = Array.isArray(cart.items) ? cart.items : [];
 
-    const items = useMemo(() => {
-        const allItems = Array.isArray(cart.items) ? cart.items : [];
-        if (selectedItemIds.length > 0) {
-            const selectedSet = new Set(selectedItemIds.map(id => String(id)));
-            return allItems.filter(item => selectedSet.has(String(item.productId)));
-        }
-        return allItems;
-    }, [cart.items, selectedItemIds]);
+    const selectedIdSet = useMemo(() => (
+        selectedProductIds.length ? new Set(selectedProductIds) : null
+    ), [selectedProductIds]);
 
-    const subtotal = useMemo(() => {
-        return items.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
-    }, [items]);
+    const items = useMemo(() => (
+        selectedIdSet
+            ? cartItems.filter((item) => selectedIdSet.has(String(item.productId)))
+            : cartItems
+    ), [cartItems, selectedIdSet]);
+
+    const checkoutProductIds = useMemo(
+        () => items.map((item) => String(item.productId)).filter(Boolean),
+        [items]
+    );
+
+    const subtotal = useMemo(
+        () => items.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0),
+        [items]
+    );
+
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
 
@@ -139,7 +207,18 @@ const CheckoutPage = () => {
             try {
                 const snapshot = await fetchCart();
                 if (!isMounted) return;
+
                 setCart(snapshot);
+
+                if (selectedProductIds.length) {
+                    const availableIds = new Set((snapshot.items || []).map((item) => String(item.productId)));
+                    const availableSelection = selectedProductIds.filter((productId) => availableIds.has(productId));
+                    setSelectedProductIds(availableSelection);
+
+                    if (!availableSelection.length) {
+                        setFeedback('Các sản phẩm đã chọn không còn trong giỏ hàng. Vui lòng quay lại giỏ hàng để chọn lại.');
+                    }
+                }
             } catch (error) {
                 if (!isMounted) return;
                 setCart(getCartSnapshot());
@@ -168,6 +247,7 @@ const CheckoutPage = () => {
                 console.error('Không thể lấy danh sách voucher khả dụng:', err);
             }
         };
+
         if (isAuthenticated) {
             void loadVouchers();
         }
@@ -183,13 +263,16 @@ const CheckoutPage = () => {
                 city: form.city.trim() || 'Hồ Chí Minh',
                 note: form.note.trim(),
             };
+
             const res = await previewCheckoutApi({
                 shippingInfo: previewShipping,
                 couponCode: code,
                 usePoints: points,
                 pointsToUse: pToUse !== undefined ? pToUse : (points ? pointsToUse : 0),
-                itemIds: selectedItemIds,
+                selectedProductIds: checkoutProductIds,
+                itemIds: checkoutProductIds,
             });
+
             if (res?.errCode === 0 && res?.data) {
                 setPreviewResult(res.data);
             }
@@ -205,6 +288,7 @@ const CheckoutPage = () => {
         const checked = e.target.checked;
         setUsePoints(checked);
         setFeedback('');
+
         const initialPoints = checked ? (user?.rewardPoints || 0) : 0;
         setPointsToUse(initialPoints);
         void triggerPreview(appliedCoupon, checked, initialPoints);
@@ -212,18 +296,22 @@ const CheckoutPage = () => {
 
     const handlePointsInputChange = (e) => {
         const val = e.target.value;
+
         if (val === '') {
             setPointsToUse('');
             return;
         }
+
         let parsed = parseInt(val, 10);
-        if (isNaN(parsed) || parsed < 0) {
+        if (Number.isNaN(parsed) || parsed < 0) {
             parsed = 0;
         }
+
         const maxPoints = user?.rewardPoints || 0;
         if (parsed > maxPoints) {
             parsed = maxPoints;
         }
+
         setPointsToUse(parsed);
         void triggerPreview(appliedCoupon, usePoints, parsed);
     };
@@ -241,14 +329,13 @@ const CheckoutPage = () => {
         void triggerPreview(appliedCoupon, usePoints, maxPoints);
     };
 
-
-
     // Tien - Áp dụng mã giảm giá có kiểm tra và bật popup lỗi nếu không thỏa điều kiện
     const handleApplyCoupon = async (code) => {
         const cleanCode = String(code || '').trim().toUpperCase();
         if (!cleanCode) return;
 
         setLoading(true);
+
         try {
             const previewShipping = {
                 fullName: form.fullName.trim().length >= 2 ? form.fullName.trim() : 'Khách hàng',
@@ -257,13 +344,16 @@ const CheckoutPage = () => {
                 city: form.city.trim() || 'Hồ Chí Minh',
                 note: form.note.trim(),
             };
+
             const res = await previewCheckoutApi({
                 shippingInfo: previewShipping,
                 couponCode: cleanCode,
-                usePoints: usePoints,
+                usePoints,
                 pointsToUse: usePoints ? pointsToUse : 0,
-                itemIds: selectedItemIds,
+                selectedProductIds: checkoutProductIds,
+                itemIds: checkoutProductIds,
             });
+
             if (res?.errCode === 0 && res?.data) {
                 setPreviewResult(res.data);
                 setAppliedCoupon(cleanCode);
@@ -274,7 +364,6 @@ const CheckoutPage = () => {
             console.error('Lỗi khi áp dụng mã giảm giá:', err);
             const errMsg = getErrorMessage(err, 'Mã giảm giá không hợp lệ hoặc chưa đủ điều kiện áp dụng.');
             message.error(errMsg);
-            // Reset trạng thái nếu áp dụng thất bại
             setAppliedCoupon('');
             setCouponCode('');
         } finally {
@@ -316,7 +405,7 @@ const CheckoutPage = () => {
         }
 
         if (!items.length) {
-            setFeedback('Giỏ hàng đang trống, vui lòng thêm sản phẩm trước khi thanh toán.');
+            setFeedback(selectedProductIds.length ? 'Các sản phẩm đã chọn không còn trong giỏ hàng.' : 'Giỏ hàng đang trống, vui lòng thêm sản phẩm trước khi thanh toán.');
             return;
         }
 
@@ -333,10 +422,11 @@ const CheckoutPage = () => {
         try {
             const response = await checkoutOrderApi({
                 paymentMethod,
+                selectedProductIds: checkoutProductIds,
+                itemIds: checkoutProductIds,
                 couponCode: appliedCoupon,
                 usePoints,
                 pointsToUse: usePoints ? (parseInt(pointsToUse, 10) || 0) : 0,
-                itemIds: selectedItemIds,
                 shippingInfo: {
                     fullName: form.fullName.trim(),
                     phone: form.phone.trim(),
@@ -361,8 +451,14 @@ const CheckoutPage = () => {
                 return;
             }
 
-            resetCartCache();
-            setCart(getCartSnapshot());
+            sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
+
+            const nextCart = await fetchCart().catch(() => {
+                resetCartCache();
+                return getCartSnapshot();
+            });
+
+            setCart(nextCart);
             setCreatedOrder(response.data);
         } catch (error) {
             setFeedback(getErrorMessage(error, 'Không thể đặt hàng. Vui lòng kiểm tra lại giỏ hàng.'));
@@ -484,7 +580,12 @@ const CheckoutPage = () => {
 
                             <label className="block">
                                 <span className="text-sm font-semibold text-slate-700">Tỉnh/thành phố</span>
-                                <input value={form.city} onChange={updateForm('city')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="TP. Hồ Chí Minh" />
+                                <select value={form.city} onChange={updateForm('city')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white">
+                                    <option value="">Chọn tỉnh/thành phố</option>
+                                    {VIETNAM_PROVINCES.map((province) => (
+                                        <option key={province} value={province}>{province}</option>
+                                    ))}
+                                </select>
                                 {errors.city ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.city}</span> : null}
                             </label>
 
@@ -529,14 +630,12 @@ const CheckoutPage = () => {
                             </label>
                         </div>
 
-                        {/* Tien - Nhập mã giảm giá và dùng điểm tích lũy */}
                         <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
                             <div>
                                 <h3 className="text-base font-bold text-slate-900">Khuyến mãi & Ưu đãi</h3>
                                 <p className="text-xs text-slate-500 mt-1">Chọn hoặc nhập mã giảm giá, sử dụng điểm tích lũy thành viên.</p>
                             </div>
 
-                            {/* Dùng điểm tích lũy */}
                             <div className="border-t border-slate-100 pt-4">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
@@ -584,10 +683,9 @@ const CheckoutPage = () => {
                                 )}
                             </div>
 
-                            {/* Mã giảm giá */}
                             <div className="border-t border-slate-100 pt-4 space-y-3">
                                 <span className="block font-bold text-slate-900 text-sm">Mã giảm giá (Voucher)</span>
-                                
+
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -624,14 +722,13 @@ const CheckoutPage = () => {
                                     </div>
                                 )}
 
-                                {/* Danh sách voucher có sẵn */}
                                 {vouchers.length > 0 && (
                                     <div className="mt-3">
                                         <span className="block text-xs text-slate-500 mb-2 font-semibold">Voucher khả dụng của bạn:</span>
                                         <div className="grid gap-2 sm:grid-cols-2 max-h-40 overflow-y-auto pr-1">
                                             {vouchers.map((v) => (
-                                                <div 
-                                                    key={v._id} 
+                                                <div
+                                                    key={v._id}
                                                     onClick={() => !appliedCoupon && handleApplyCoupon(v.code)}
                                                     className={`border rounded-xl p-3 text-left transition cursor-pointer select-none ${appliedCoupon === v.code ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:border-red-500 bg-slate-50/50'}`}
                                                 >

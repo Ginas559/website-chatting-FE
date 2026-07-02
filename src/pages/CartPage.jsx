@@ -11,6 +11,8 @@ const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     maximumFractionDigits: 0,
 });
 
+const CHECKOUT_SELECTION_KEY = 'smartzone.checkout.selectedProductIds';
+
 const recalculateCart = (snapshot) => {
     const items = Array.isArray(snapshot?.items) ? snapshot.items : [];
     const totalItems = items.length;
@@ -35,22 +37,31 @@ const CartPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [mutatingIds, setMutatingIds] = useState(() => new Set());
-    const [selectedIds, setSelectedIds] = useState(() => new Set());
+    const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const [selectionInitialized, setSelectionInitialized] = useState(false);
 
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const items = Array.isArray(cart.items) ? cart.items : [];
 
-    const selectedItems = useMemo(() => {
-        return items.filter((item) => selectedIds.has(String(item.productId)));
-    }, [items, selectedIds]);
+    const itemIds = useMemo(() => items.map((item) => String(item.productId)).filter(Boolean), [items]);
+    const selectedIdSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
 
-    const selectedSubtotal = useMemo(() => {
-        return selectedItems.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || 0) * Number(item.quantity || 0)), 0);
-    }, [selectedItems]);
+    const selectedItems = useMemo(
+        () => items.filter((item) => selectedIdSet.has(String(item.productId))),
+        [items, selectedIdSet]
+    );
 
-    const selectedQuantity = useMemo(() => {
-        return selectedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    }, [selectedItems]);
+    const selectedQuantity = useMemo(
+        () => selectedItems.reduce((sum, item) => sum + Number(item.quantity || item.qty || 0), 0),
+        [selectedItems]
+    );
+
+    const selectedAmount = useMemo(
+        () => selectedItems.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0),
+        [selectedItems]
+    );
+
+    const allSelected = itemIds.length > 0 && selectedProductIds.length === itemIds.length;
 
     useEffect(() => {
         let isMounted = true;
@@ -99,21 +110,24 @@ const CartPage = () => {
     }, [isAuthenticated]);
 
     useEffect(() => {
-        const cartItems = Array.isArray(cart.items) ? cart.items : [];
-        setSelectedIds((current) => {
-            const next = new Set();
-            const currentItemsSet = new Set(cartItems.map((item) => String(item.productId)));
-            current.forEach((id) => {
-                if (currentItemsSet.has(id)) {
-                    next.add(id);
-                }
-            });
-            if (next.size === 0 && cartItems.length > 0) {
-                cartItems.forEach((item) => next.add(String(item.productId)));
+        if (!itemIds.length) {
+            setSelectedProductIds([]);
+            setSelectionInitialized(false);
+            return;
+        }
+
+        setSelectedProductIds((current) => {
+            const availableIds = new Set(itemIds);
+            const keptIds = current.filter((productId) => availableIds.has(productId));
+
+            if (!selectionInitialized) {
+                setSelectionInitialized(true);
+                return itemIds;
             }
-            return next;
+
+            return keptIds;
         });
-    }, [cart.items]);
+    }, [itemIds, selectionInitialized]);
 
     const onLogout = async () => {
         await dispatch(logoutUser());
@@ -181,6 +195,7 @@ const CartPage = () => {
 
         setCart(optimisticCart);
         setCartCount(optimisticCart.totalQuantity);
+        setSelectedProductIds((current) => current.filter((id) => id !== itemKey));
         setItemMutating(itemKey, true);
         setError('');
 
@@ -208,6 +223,7 @@ const CartPage = () => {
 
         setCart(optimisticCart);
         setCartCount(0);
+        setSelectedProductIds([]);
         setError('');
 
         try {
@@ -219,6 +235,35 @@ const CartPage = () => {
             setCartCount(previousCart.totalQuantity || 0);
             setError(err?.errMessage || err?.message || 'Không thể xóa toàn bộ giỏ hàng.');
         }
+    };
+
+    const toggleItemSelection = (productId) => {
+        const itemKey = String(productId);
+        setSelectedProductIds((current) => (
+            current.includes(itemKey)
+                ? current.filter((id) => id !== itemKey)
+                : [...current, itemKey]
+        ));
+    };
+
+    const toggleAllSelection = () => {
+        setSelectedProductIds(allSelected ? [] : itemIds);
+    };
+
+    const goToCheckout = () => {
+        if (!selectedProductIds.length) {
+            setError('Vui lòng chọn ít nhất một sản phẩm để thanh toán.');
+            return;
+        }
+
+        sessionStorage.setItem(CHECKOUT_SELECTION_KEY, JSON.stringify(selectedProductIds));
+        navigate('/checkout', {
+            state: {
+                selectedProductIds,
+                selectedItemIds: selectedProductIds,
+                itemIds: selectedProductIds,
+            },
+        });
     };
 
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
@@ -304,48 +349,31 @@ const CartPage = () => {
                         ) : items.length ? (
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between rounded-[24px] border border-slate-200 bg-slate-50/50 p-4 text-left">
-                                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                                    <label className="flex cursor-pointer select-none items-center gap-3">
                                         <input
                                             type="checkbox"
-                                            checked={items.length > 0 && selectedIds.size === items.length}
-                                            onChange={() => {
-                                                if (selectedIds.size === items.length) {
-                                                    setSelectedIds(new Set());
-                                                } else {
-                                                    setSelectedIds(new Set(items.map((i) => String(i.productId))));
-                                                }
-                                            }}
-                                            className="h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-500 accent-red-600"
+                                            checked={allSelected}
+                                            onChange={toggleAllSelection}
+                                            className="h-5 w-5 rounded border-slate-300 accent-red-600"
                                         />
                                         <span className="text-sm font-bold text-slate-700">Chọn tất cả ({items.length} sản phẩm)</span>
                                     </label>
-                                    <button 
-                                        type="button" 
-                                        onClick={clearAll} 
+                                    <button
+                                        type="button"
+                                        onClick={clearAll}
                                         className="text-sm font-bold text-rose-600 hover:text-rose-700"
                                     >
                                         Xóa tất cả
                                     </button>
                                 </div>
+
                                 {items.map((item) => {
                                     const itemKey = String(item.productId);
                                     const isMutating = mutatingIds.has(itemKey);
                                     const stock = item.availability?.stock;
                                     const remaining = item.availability?.remainingToIncrease;
                                     const canIncrease = item.availability?.canIncrease;
-
-                                    const isSelected = selectedIds.has(itemKey);
-                                    const toggleSelect = () => {
-                                        setSelectedIds((current) => {
-                                            const next = new Set(current);
-                                            if (next.has(itemKey)) {
-                                                next.delete(itemKey);
-                                            } else {
-                                                next.add(itemKey);
-                                            }
-                                            return next;
-                                        });
-                                    };
+                                    const isSelected = selectedIdSet.has(itemKey);
 
                                     return (
                                         <div key={item.id || item.cartItemId || itemKey} className="flex flex-col gap-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
@@ -353,12 +381,15 @@ const CartPage = () => {
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
-                                                    onChange={toggleSelect}
+                                                    onChange={() => toggleItemSelection(itemKey)}
                                                     disabled={isMutating}
-                                                    className="h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer accent-red-600 disabled:cursor-not-allowed"
+                                                    className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-red-600 disabled:cursor-not-allowed"
+                                                    aria-label={`Chọn ${item.snapshot?.name || 'sản phẩm'}`}
                                                 />
                                             </div>
+
                                             <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-28 w-24 rounded-2xl object-cover" />
+
                                             <div className="flex-1 text-left">
                                                 <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">{item.snapshot?.brand}</div>
                                                 <h2 className="mt-1 text-lg font-bold text-slate-900">{item.snapshot?.name}</h2>
@@ -429,32 +460,48 @@ const CartPage = () => {
                         )}
                     </section>
 
-                    <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm text-left">
+                    <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 text-left shadow-sm">
                         <h2 className="text-xl font-bold text-slate-900">Tổng đơn</h2>
+
+                        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+                            <span>Chọn tất cả</span>
+                            <input
+                                type="checkbox"
+                                checked={allSelected}
+                                onChange={toggleAllSelection}
+                                disabled={!items.length}
+                                className="h-5 w-5 accent-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                        </label>
+
                         <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-                            <span>Sản phẩm chọn mua</span>
-                            <span>{selectedItems.length}</span>
+                            <span>Sản phẩm đã chọn</span>
+                            <span>{selectedItems.length}/{cart.totalItems || items.length}</span>
                         </div>
+
                         <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
-                            <span>Tổng số lượng</span>
+                            <span>Số lượng đã chọn</span>
                             <span>{selectedQuantity}</span>
                         </div>
+
                         <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
-                            <span>Tổng tiền</span>
-                            <span>{formatVnd(selectedSubtotal)}</span>
+                            <span>Tổng tiền đã chọn</span>
+                            <span>{formatVnd(selectedAmount)}</span>
                         </div>
+
                         <button
                             type="button"
-                            onClick={() => navigate('/checkout', { state: { selectedItemIds: Array.from(selectedIds) } })}
-                            disabled={!selectedItems.length || loading}
+                            onClick={goToCheckout}
+                            disabled={!selectedProductIds.length || loading}
                             className={`mt-5 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 font-semibold shadow-lg transition ${
-                                selectedItems.length && !loading
-                                    ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-700 cursor-pointer'
-                                    : 'bg-slate-200 text-slate-400 shadow-none cursor-not-allowed'
+                                selectedProductIds.length && !loading
+                                    ? 'cursor-pointer bg-red-600 text-white shadow-red-500/20 hover:bg-red-700'
+                                    : 'cursor-not-allowed bg-slate-200 text-slate-400 shadow-none'
                             }`}
                         >
                             Thanh toán
                         </button>
+
                         <button
                             type="button"
                             onClick={clearAll}
