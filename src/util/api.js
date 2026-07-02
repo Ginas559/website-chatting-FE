@@ -62,8 +62,8 @@ export const addRecentlyViewedProductApi = (slug) => {
     return axios.post(`products/${slug}/viewed`);
 };
 
-export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode }) => {
-    return axios.post('orders/checkout', { shippingInfo, paymentMethod, bankCode });
+export const checkoutOrderApi = ({ shippingInfo, paymentMethod = 'COD', bankCode, selectedProductIds }) => {
+    return axios.post('orders/checkout', { shippingInfo, paymentMethod, bankCode, selectedProductIds });
 };
 
 export const verifyVnpayReturnApi = (params = {}) => {

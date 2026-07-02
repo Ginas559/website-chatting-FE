@@ -11,6 +11,8 @@ const formatVnd = (value) => Number(value || 0).toLocaleString('vi-VN', {
     maximumFractionDigits: 0,
 });
 
+const CHECKOUT_SELECTION_KEY = 'smartzone.checkout.selectedProductIds';
+
 const recalculateCart = (snapshot) => {
     const items = Array.isArray(snapshot?.items) ? snapshot.items : [];
     const totalItems = items.length;
@@ -35,10 +37,26 @@ const CartPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [mutatingIds, setMutatingIds] = useState(() => new Set());
+    const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const [selectionInitialized, setSelectionInitialized] = useState(false);
 
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const items = Array.isArray(cart.items) ? cart.items : [];
-    const totalAmount = useMemo(() => Number(cart.subtotal || 0), [cart.subtotal]);
+    const itemIds = useMemo(() => items.map((item) => String(item.productId)).filter(Boolean), [items]);
+    const selectedIdSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
+    const selectedItems = useMemo(
+        () => items.filter((item) => selectedIdSet.has(String(item.productId))),
+        [items, selectedIdSet]
+    );
+    const selectedQuantity = useMemo(
+        () => selectedItems.reduce((sum, item) => sum + Number(item.quantity || item.qty || 0), 0),
+        [selectedItems]
+    );
+    const selectedAmount = useMemo(
+        () => selectedItems.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0),
+        [selectedItems]
+    );
+    const allSelected = itemIds.length > 0 && selectedProductIds.length === itemIds.length;
 
     useEffect(() => {
         let isMounted = true;
@@ -85,6 +103,26 @@ const CartPage = () => {
             window.removeEventListener('storage', onCartUpdated);
         };
     }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (!itemIds.length) {
+            setSelectedProductIds([]);
+            setSelectionInitialized(false);
+            return;
+        }
+
+        setSelectedProductIds((current) => {
+            const availableIds = new Set(itemIds);
+            const keptIds = current.filter((productId) => availableIds.has(productId));
+
+            if (!selectionInitialized) {
+                setSelectionInitialized(true);
+                return itemIds;
+            }
+
+            return keptIds;
+        });
+    }, [itemIds, selectionInitialized]);
 
     const onLogout = async () => {
         await dispatch(logoutUser());
@@ -152,6 +190,7 @@ const CartPage = () => {
 
         setCart(optimisticCart);
         setCartCount(optimisticCart.totalQuantity);
+        setSelectedProductIds((current) => current.filter((id) => id !== itemKey));
         setItemMutating(itemKey, true);
         setError('');
 
@@ -179,6 +218,7 @@ const CartPage = () => {
 
         setCart(optimisticCart);
         setCartCount(0);
+        setSelectedProductIds([]);
         setError('');
 
         try {
@@ -190,6 +230,29 @@ const CartPage = () => {
             setCartCount(previousCart.totalQuantity || 0);
             setError(err?.errMessage || err?.message || 'Không thể xóa toàn bộ giỏ hàng.');
         }
+    };
+
+    const toggleItemSelection = (productId) => {
+        const itemKey = String(productId);
+        setSelectedProductIds((current) => (
+            current.includes(itemKey)
+                ? current.filter((id) => id !== itemKey)
+                : [...current, itemKey]
+        ));
+    };
+
+    const toggleAllSelection = () => {
+        setSelectedProductIds(allSelected ? [] : itemIds);
+    };
+
+    const goToCheckout = () => {
+        if (!selectedProductIds.length) {
+            setError('Vui lòng chọn ít nhất một sản phẩm để thanh toán.');
+            return;
+        }
+
+        sessionStorage.setItem(CHECKOUT_SELECTION_KEY, JSON.stringify(selectedProductIds));
+        navigate('/checkout', { state: { selectedProductIds } });
     };
 
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
@@ -281,6 +344,15 @@ const CartPage = () => {
 
                             return (
                                 <div key={item.id || item.cartItemId || itemKey} className="flex flex-col gap-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 md:self-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIdSet.has(itemKey)}
+                                            onChange={() => toggleItemSelection(itemKey)}
+                                            className="h-5 w-5 accent-red-600"
+                                            aria-label={`Chọn ${item.snapshot?.name || 'sản phẩm'}`}
+                                        />
+                                    </label>
                                     <img src={item.snapshot?.image} alt={item.snapshot?.name} className="h-28 w-24 rounded-2xl object-cover" />
                                     <div className="flex-1 text-left">
                                         <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">{item.snapshot?.brand}</div>
@@ -352,28 +424,40 @@ const CartPage = () => {
 
                     <aside className="h-fit rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm text-left">
                         <h2 className="text-xl font-bold text-slate-900">Tổng đơn</h2>
+                        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+                            <span>Chọn tất cả</span>
+                            <input
+                                type="checkbox"
+                                checked={allSelected}
+                                onChange={toggleAllSelection}
+                                disabled={!items.length}
+                                className="h-5 w-5 accent-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                        </label>
                         <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-                            <span>Sản phẩm</span>
-                            <span>{cart.totalItems || items.length}</span>
+                            <span>Sản phẩm đã chọn</span>
+                            <span>{selectedItems.length}/{cart.totalItems || items.length}</span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
-                            <span>Tổng số lượng</span>
-                            <span>{cart.totalQuantity || 0}</span>
+                            <span>Số lượng đã chọn</span>
+                            <span>{selectedQuantity}</span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
-                            <span>Tổng tiền</span>
-                            <span>{formatVnd(totalAmount)}</span>
+                            <span>Tổng tiền đã chọn</span>
+                            <span>{formatVnd(selectedAmount)}</span>
                         </div>
-                        <Link
-                            to="/checkout"
+                        <button
+                            type="button"
+                            onClick={goToCheckout}
                             className={`mt-5 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 font-semibold shadow-lg transition ${
-                                items.length && !loading
+                                selectedProductIds.length && !loading
                                     ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-700'
-                                    : 'pointer-events-none bg-slate-200 text-slate-400 shadow-none'
+                                    : 'cursor-not-allowed bg-slate-200 text-slate-400 shadow-none'
                             }`}
+                            disabled={!selectedProductIds.length || loading}
                         >
                             Thanh toán
-                        </Link>
+                        </button>
                         <button
                             type="button"
                             onClick={clearAll}

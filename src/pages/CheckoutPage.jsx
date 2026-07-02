@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ArrowLeftOutlined, LoadingOutlined, LogoutOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { logoutUser } from '../redux/slices/authSlice';
@@ -18,6 +18,56 @@ const initialForm = {
     address: '',
     city: '',
     note: '',
+};
+
+const CHECKOUT_SELECTION_KEY = 'smartzone.checkout.selectedProductIds';
+
+const VIETNAM_PROVINCES = [
+    'An Giang',
+    'Bắc Ninh',
+    'Cà Mau',
+    'Cao Bằng',
+    'Cần Thơ',
+    'Đà Nẵng',
+    'Đắk Lắk',
+    'Điện Biên',
+    'Đồng Nai',
+    'Đồng Tháp',
+    'Gia Lai',
+    'Hà Nội',
+    'Hà Tĩnh',
+    'Hải Phòng',
+    'Hồ Chí Minh',
+    'Huế',
+    'Hưng Yên',
+    'Khánh Hòa',
+    'Lai Châu',
+    'Lâm Đồng',
+    'Lạng Sơn',
+    'Lào Cai',
+    'Nghệ An',
+    'Ninh Bình',
+    'Phú Thọ',
+    'Quảng Ngãi',
+    'Quảng Ninh',
+    'Quảng Trị',
+    'Sơn La',
+    'Tây Ninh',
+    'Thái Nguyên',
+    'Thanh Hóa',
+    'Tuyên Quang',
+    'Vĩnh Long',
+];
+
+const getStoredCheckoutSelection = () => {
+    try {
+        const rawValue = sessionStorage.getItem(CHECKOUT_SELECTION_KEY);
+        const parsedValue = rawValue ? JSON.parse(rawValue) : [];
+
+        return Array.isArray(parsedValue) ? parsedValue.map((productId) => String(productId)).filter(Boolean) : [];
+    } catch {
+        return [];
+    }
 };
 
 const getErrorMessage = (error, fallback) => {
@@ -42,8 +92,8 @@ const validateForm = (values) => {
         errors.address = 'Địa chỉ nhận hàng cần rõ hơn.';
     }
 
-    if (values.city.trim().length > 80) {
-        errors.city = 'Tỉnh/thành phố quá dài.';
+    if (!VIETNAM_PROVINCES.includes(values.city.trim())) {
+        errors.city = 'Chọn tỉnh/thành phố trong danh sách.';
     }
 
     if (values.note.trim().length > 300) {
@@ -55,8 +105,16 @@ const validateForm = (values) => {
 
 const CheckoutPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const [selectedProductIds, setSelectedProductIds] = useState(() => {
+        const routeSelection = location.state?.selectedProductIds;
+
+        return Array.isArray(routeSelection)
+            ? routeSelection.map((productId) => String(productId)).filter(Boolean)
+            : getStoredCheckoutSelection();
+    });
     const [cart, setCart] = useState(() => getCartSnapshot());
     const [form, setForm] = useState(() => ({
         ...initialForm,
@@ -71,8 +129,23 @@ const CheckoutPage = () => {
     const [createdOrder, setCreatedOrder] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('COD');
 
-    const items = Array.isArray(cart.items) ? cart.items : [];
-    const subtotal = useMemo(() => Number(cart.subtotal || 0), [cart.subtotal]);
+    const cartItems = Array.isArray(cart.items) ? cart.items : [];
+    const selectedIdSet = useMemo(() => (
+        selectedProductIds.length ? new Set(selectedProductIds) : null
+    ), [selectedProductIds]);
+    const items = useMemo(() => (
+        selectedIdSet
+            ? cartItems.filter((item) => selectedIdSet.has(String(item.productId)))
+            : cartItems
+    ), [cartItems, selectedIdSet]);
+    const checkoutProductIds = useMemo(
+        () => items.map((item) => String(item.productId)).filter(Boolean),
+        [items]
+    );
+    const subtotal = useMemo(
+        () => items.reduce((sum, item) => sum + Number(item.lineTotal ?? Number(item.snapshot?.price || item.unitPrice || 0) * Number(item.quantity || item.qty || 0)), 0),
+        [items]
+    );
     const memberName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Member';
     const memberTag = memberName.charAt(0).toUpperCase() || 'M';
 
@@ -92,6 +165,15 @@ const CheckoutPage = () => {
                 const snapshot = await fetchCart();
                 if (!isMounted) return;
                 setCart(snapshot);
+                if (selectedProductIds.length) {
+                    const availableIds = new Set((snapshot.items || []).map((item) => String(item.productId)));
+                    const availableSelection = selectedProductIds.filter((productId) => availableIds.has(productId));
+                    setSelectedProductIds(availableSelection);
+
+                    if (!availableSelection.length) {
+                        setFeedback('Các sản phẩm đã chọn không còn trong giỏ hàng. Vui lòng quay lại giỏ hàng để chọn lại.');
+                    }
+                }
             } catch (error) {
                 if (!isMounted) return;
                 setCart(getCartSnapshot());
@@ -136,7 +218,7 @@ const CheckoutPage = () => {
         }
 
         if (!items.length) {
-            setFeedback('Giỏ hàng đang trống, vui lòng thêm sản phẩm trước khi thanh toán.');
+            setFeedback(selectedProductIds.length ? 'Các sản phẩm đã chọn không còn trong giỏ hàng.' : 'Giỏ hàng đang trống, vui lòng thêm sản phẩm trước khi thanh toán.');
             return;
         }
 
@@ -153,6 +235,7 @@ const CheckoutPage = () => {
         try {
             const response = await checkoutOrderApi({
                 paymentMethod,
+                selectedProductIds: checkoutProductIds,
                 shippingInfo: {
                     fullName: form.fullName.trim(),
                     phone: form.phone.trim(),
@@ -177,8 +260,12 @@ const CheckoutPage = () => {
                 return;
             }
 
-            resetCartCache();
-            setCart(getCartSnapshot());
+            sessionStorage.removeItem(CHECKOUT_SELECTION_KEY);
+            const nextCart = await fetchCart().catch(() => {
+                resetCartCache();
+                return getCartSnapshot();
+            });
+            setCart(nextCart);
             setCreatedOrder(response.data);
         } catch (error) {
             setFeedback(getErrorMessage(error, 'Không thể đặt hàng. Vui lòng kiểm tra lại giỏ hàng.'));
@@ -300,7 +387,12 @@ const CheckoutPage = () => {
 
                             <label className="block">
                                 <span className="text-sm font-semibold text-slate-700">Tỉnh/thành phố</span>
-                                <input value={form.city} onChange={updateForm('city')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white" placeholder="TP. Hồ Chí Minh" />
+                                <select value={form.city} onChange={updateForm('city')} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white">
+                                    <option value="">Chọn tỉnh/thành phố</option>
+                                    {VIETNAM_PROVINCES.map((province) => (
+                                        <option key={province} value={province}>{province}</option>
+                                    ))}
+                                </select>
                                 {errors.city ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.city}</span> : null}
                             </label>
 
