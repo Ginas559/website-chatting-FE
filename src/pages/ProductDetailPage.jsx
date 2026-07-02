@@ -346,7 +346,7 @@ const ProductDetailPage = () => {
     const reviewBreakdown = reviewData.summary?.ratingBreakdown || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
+        <div className="min-h-screen max-w-full overflow-x-hidden bg-gradient-to-b from-orange-50 via-white to-slate-50 text-slate-900">
             <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
                 <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-4 lg:px-6">
                     <Link to="/" className="inline-flex items-center gap-3">
@@ -392,11 +392,11 @@ const ProductDetailPage = () => {
 
                         {isAuthenticated ? (
                             <>
-                                <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2 text-left">
+                                <Link to="/user/profile" className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2 text-left transition hover:border-orange-300 hover:bg-orange-100">
                                     <p className="text-xs uppercase tracking-[0.18em] text-orange-700">Thành viên đăng nhập</p>
                                     <p className="text-sm font-bold text-slate-900">{memberName || user?.email || 'Member'}</p>
                                     <p className="text-xs text-slate-500">Vai trò: {user?.roleId || 'R2'}</p>
-                                </div>
+                                </Link>
 
                                 <button onClick={onLogout} type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
                                     Đăng xuất
@@ -412,9 +412,9 @@ const ProductDetailPage = () => {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+            <main className="mx-auto max-w-7xl overflow-x-hidden px-4 py-6 lg:px-6">
                 {notice ? <StatusAlert type={noticeType}>{notice}</StatusAlert> : null}
-                <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+                <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
                     <section className="rounded-[32px] border border-slate-200 bg-white shadow-sm">
                         <div className="relative h-[240px] overflow-hidden rounded-[32px] sm:h-[320px] md:h-[420px] lg:h-[520px]">
                             <img src={currentImage} alt={detail.name} className="h-full w-full object-cover object-center" />
@@ -549,7 +549,7 @@ const ProductDetailPage = () => {
                     </section>
                 </div>
 
-                <section id="reviews" className="mt-10 scroll-mt-28">
+                <section id="reviews" className="mt-10 min-w-0 max-w-full scroll-mt-28 overflow-x-hidden">
                     <div className="mb-5 flex items-end justify-between gap-3">
                         <div>
                             <div className="text-sm font-black uppercase tracking-[0.22em] text-orange-600">REVIEWS</div>
@@ -558,8 +558,8 @@ const ProductDetailPage = () => {
                         <p className="text-sm text-slate-500">Chỉ đơn đã giao thành công mới được gửi đánh giá.</p>
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-                        <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm text-left">
+                    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                        <div className="min-w-0 rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm text-left">
                             <div className="flex items-end justify-between gap-4">
                                 <div>
                                     <div className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Tổng quan</div>
@@ -645,7 +645,7 @@ const ProductDetailPage = () => {
                             )}
                         </div>
 
-                        <div className="space-y-4 text-left">
+                        <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden text-left">
                             {reviewLoading ? (
                                 <div className="rounded-[32px] border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
                                     Đang tải đánh giá...
@@ -654,28 +654,28 @@ const ProductDetailPage = () => {
                                 const displayName = `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Khách hàng';
 
                                 return (
-                                    <article key={review.id} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                                    <article key={review.id} className="w-full max-w-full overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
                                         <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex min-w-0 items-center gap-3">
                                                 {review.user?.image ? (
                                                     <img 
                                                         src={review.user.image} 
                                                         alt="" 
                                                         onClick={() => handleOpenProfile(review.user?.id)}
-                                                        className="h-11 w-11 rounded-full object-cover border border-slate-200 cursor-pointer transition transform hover:scale-105"
+                                                        className="h-11 w-11 shrink-0 rounded-full border border-slate-200 object-cover cursor-pointer transition transform hover:scale-105"
                                                     />
                                                 ) : (
                                                     <div 
                                                         onClick={() => handleOpenProfile(review.user?.id)}
-                                                        className="grid h-11 w-11 place-items-center rounded-full bg-orange-100 font-bold text-orange-700 cursor-pointer transition transform hover:scale-105"
+                                                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 font-bold text-orange-700 cursor-pointer transition transform hover:scale-105"
                                                     >
                                                         {displayName.charAt(0).toUpperCase()}
                                                     </div>
                                                 )}
-                                                <div>
+                                                <div className="min-w-0">
                                                     <div 
                                                         onClick={() => handleOpenProfile(review.user?.id)}
-                                                        className="font-bold text-slate-900 cursor-pointer hover:text-orange-500 transition"
+                                                        className="break-all font-bold text-slate-900 cursor-pointer hover:text-orange-500 transition [overflow-wrap:anywhere]"
                                                     >
                                                         {displayName}
                                                     </div>
@@ -685,10 +685,10 @@ const ProductDetailPage = () => {
                                             <div className="flex items-center gap-1 text-amber-400">{renderStars(review.rating)}</div>
                                         </div>
 
-                                        <div className="mt-4 text-sm font-bold text-slate-900">{review.title || 'Đánh giá sản phẩm'}</div>
-                                        <p className="mt-2 text-sm leading-6 text-slate-600">{review.content}</p>
+                                        <div className="mt-4 break-all text-sm font-bold text-slate-900 [overflow-wrap:anywhere]">{review.title || 'Đánh giá sản phẩm'}</div>
+                                        <p className="mt-2 break-all text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{review.content}</p>
 
-                                        <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                        <div className="mt-4 break-all rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 [overflow-wrap:anywhere]">
                                             {getRewardNoticeMessage(review.reward)}
                                         </div>
                                     </article>

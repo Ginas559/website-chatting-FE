@@ -14,6 +14,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import VnpayReturnPage from './pages/VnpayReturnPage';
 import OrdersPage from './pages/OrdersPage';
 import UserLivePage from './pages/UserLivePage';
+import LoyaltyPage from './pages/LoyaltyPage';
 import MyLiveChatBansPage from './pages/MyLiveChatBansPage';
 import ChatWidget from './components/chat/ChatWidget';
 import ChatPage from './pages/ChatPage';
@@ -37,6 +38,7 @@ function App() {
         <Route path="/checkout" element={isAuthenticated ? <CheckoutPage /> : <Navigate to="/login" replace />} />
         <Route path="/orders" element={isAuthenticated ? <OrdersPage /> : <Navigate to="/login" replace />} />
         <Route path="/livestream" element={isAuthenticated ? <UserLivePage /> : <Navigate to="/login" replace />} />
+        <Route path="/loyalty" element={isAuthenticated ? <LoyaltyPage /> : <Navigate to="/login" replace />} />
         <Route path="/live-chat/my-bans" element={isAuthenticated ? <MyLiveChatBansPage /> : <Navigate to="/login" replace />} />
         <Route path="/vnpay-return" element={<VnpayReturnPage />} />
 
